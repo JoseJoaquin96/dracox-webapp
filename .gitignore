@@ -1,8 +1,9 @@
 node_modules/
+.npm-cache/
 .angular/
 dist/
 out-tsc/
 outputs/
 work/
 .DS_Store
-
+src/assets/supabase-config.json

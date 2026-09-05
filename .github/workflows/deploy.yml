@@ -30,6 +30,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create Supabase runtime config
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          node -e "const fs=require('node:fs'); const url=process.env.SUPABASE_URL; const publishableKey=process.env.SUPABASE_PUBLISHABLE_KEY; if (!url || !publishableKey) throw new Error('Missing Supabase GitHub secrets'); fs.writeFileSync('src/assets/supabase-config.json', JSON.stringify({ url, publishableKey }));"
+
       - name: Build Angular app
         run: |
           npm run build -- --base-href "/dracox-webapp/"

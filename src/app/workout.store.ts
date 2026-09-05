@@ -1,5 +1,27 @@
-import { Injectable, effect, signal } from '@angular/core';
+import { Injectable, computed, effect, signal } from '@angular/core';
 import { Exercise, Routine, SessionExercise, WorkoutSession } from './models';
+import { getSupabase, isSupabaseConfigured } from './supabase.client';
+
+type RemoteRoutineExercise = {
+  exercise_id: string;
+  sets: number;
+  rep_range: string;
+  rest_seconds: number;
+  note: string | null;
+  exercise: Exercise | null;
+};
+
+type RemoteRoutine = {
+  id: string;
+  name: string;
+  focus: string;
+  days: string;
+  duration: number;
+  color: string;
+  exercises: RemoteRoutineExercise[];
+};
+
+type RemoteState = 'disabled' | 'signed-out' | 'loading' | 'ready' | 'error';
 
 const starterExercises: Exercise[] = [
   { id: 'bench', name: 'Press banca con barra', muscle: 'Pecho', secondary: 'Tríceps · Hombro', equipment: 'Barra', kind: 'strength', initials: 'PB', color: '#f1a65b' },
@@ -49,6 +71,10 @@ export class WorkoutStore {
   readonly routines = signal<Routine[]>(this.restore('forge-routines', starterRoutines));
   readonly sessions = signal<WorkoutSession[]>(this.restore('forge-sessions', []));
   readonly activeSession = signal<WorkoutSession | null>(this.restoreNullable<WorkoutSession>('forge-active-session'));
+  readonly remoteState = signal<RemoteState>(isSupabaseConfigured() ? 'signed-out' : 'disabled');
+  readonly remoteError = signal<string | null>(null);
+  readonly authEmail = signal<string | null>(null);
+  readonly isAuthenticated = computed(() => this.authEmail() !== null);
 
   constructor() {
     effect(() => {
@@ -57,6 +83,91 @@ export class WorkoutStore {
       this.persist('forge-sessions', this.sessions());
       this.persist('forge-active-session', this.activeSession());
     });
+    void this.refreshFromSupabase();
+  }
+
+  async signIn(email: string, password: string): Promise<boolean> {
+    const client = getSupabase();
+    if (!client) {
+      this.remoteState.set('disabled');
+      this.remoteError.set('Crea src/assets/supabase-config.json con la configuración de Supabase.');
+      return false;
+    }
+
+    this.remoteState.set('loading');
+    this.remoteError.set(null);
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error) {
+      this.remoteState.set('error');
+      this.remoteError.set(error.message);
+      return false;
+    }
+
+    this.authEmail.set(data.user?.email ?? email);
+    await this.loadRemoteRoutines();
+    return this.remoteState() === 'ready';
+  }
+
+  async signOut(): Promise<void> {
+    const client = getSupabase();
+    if (client) await client.auth.signOut();
+    this.authEmail.set(null);
+    this.remoteError.set(null);
+    this.remoteState.set(isSupabaseConfigured() ? 'signed-out' : 'disabled');
+  }
+
+  private async refreshFromSupabase(): Promise<void> {
+    const client = getSupabase();
+    if (!client) return;
+
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      this.remoteState.set('error');
+      this.remoteError.set(error.message);
+      return;
+    }
+
+    this.authEmail.set(data.session?.user.email ?? null);
+    if (data.session) await this.loadRemoteRoutines();
+  }
+
+  private async loadRemoteRoutines(): Promise<void> {
+    const client = getSupabase();
+    if (!client) return;
+
+    this.remoteState.set('loading');
+    const { data, error } = await client.rpc('get_my_routines');
+    if (error) {
+      this.remoteState.set('error');
+      this.remoteError.set(error.message);
+      return;
+    }
+
+    const remoteRoutines = (data ?? []) as RemoteRoutine[];
+    const remoteExercises = remoteRoutines
+      .flatMap((routine) => routine.exercises ?? [])
+      .map((planned) => planned.exercise)
+      .filter((exercise): exercise is Exercise => exercise !== null);
+    const exerciseMap = new Map(this.exercises().map((exercise) => [exercise.id, exercise]));
+    remoteExercises.forEach((exercise) => exerciseMap.set(exercise.id, exercise));
+    this.exercises.set([...exerciseMap.values()]);
+    this.routines.set(remoteRoutines.map((routine) => ({
+      id: routine.id,
+      name: routine.name,
+      focus: routine.focus,
+      days: routine.days,
+      duration: routine.duration,
+      color: routine.color,
+      exercises: (routine.exercises ?? []).map((planned) => ({
+        exerciseId: planned.exercise_id,
+        sets: planned.sets,
+        repRange: planned.rep_range,
+        restSeconds: planned.rest_seconds,
+        note: planned.note ?? undefined
+      }))
+    })));
+    this.remoteError.set(null);
+    this.remoteState.set('ready');
   }
 
   exerciseById(id: string): Exercise | undefined {

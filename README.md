@@ -24,6 +24,18 @@ npm start
 
 Después abre `http://localhost:4200`.
 
+### Supabase local
+
+La configuración real no se guarda en el repositorio. Copia
+`src/assets/supabase-config.example.json` como
+`src/assets/supabase-config.json` y completa la Project URL y la Publishable
+Key desde Supabase > Project Settings > API Keys. El archivo real está ignorado
+por Git.
+
+En GitHub Pages, crea los secretos del repositorio `SUPABASE_URL` y
+`SUPABASE_PUBLISHABLE_KEY`; el workflow genera el archivo durante el build.
+Nunca uses la `service_role` o una secret key en Angular.
+
 ## Demo publicada
 
 La versión desplegada está disponible en [josejoaquin96.github.io/dracox-webapp](https://josejoaquin96.github.io/dracox-webapp/).
@@ -32,10 +44,10 @@ La versión desplegada está disponible en [josejoaquin96.github.io/dracox-webap
 
 - Angular 21 con componentes standalone y rutas lazy.
 - Signals para el estado de la aplicación.
-- Persistencia temporal con `localStorage` para esta primera iteración: rutinas, ejercicios, sesión activa e historial.
-- La lógica de datos vive en `WorkoutStore`, preparada para extraerse después a una capa `Repository` y conectar Supabase.
-- No hay autenticación ni backend todavía.
+- Supabase gestiona la autenticación y la persistencia de rutinas y entrenamientos.
+- `WorkoutStore` mantiene la integración remota y un fallback local para desarrollo.
+- Las políticas RLS limitan los datos de cada usuario y las claves privadas nunca llegan al cliente.
 
 ## Próximo bloque recomendado
 
-El siguiente paso es añadir superseries, calentamientos y distintos tipos de serie, y después migrar la persistencia a IndexedDB antes de conectar Supabase.
+El siguiente paso es ampliar el registro de entrenamientos y añadir validaciones y funcionalidades avanzadas de rutina.

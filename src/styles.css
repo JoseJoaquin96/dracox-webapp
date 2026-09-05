@@ -141,3 +141,28 @@ h1 em { color: var(--lime); font-style: normal; }
 @media (max-width: 760px) {
   .sidebar { display: none; }.main-content { width: 100%; margin-left: 0; padding-bottom: 69px; }.topbar { height: 66px; padding: 0 20px; justify-content: space-between; }.mobile-brand { display: inline-flex; font-size: 18px; }.mobile-brand .brand-mark { width: 28px; height: 28px; font-size: 17px; }.sync-pill { display: none; }.topbar-actions { gap: 12px; }.page-container { width: calc(100% - 32px); padding: 31px 0 45px; }.page-heading { display: block; margin-bottom: 27px; }.compact-heading { margin-bottom: 30px; }.page-heading .button, .heading-cta { width: 100%; margin-top: 22px; }.heading-subtitle { font-size: 12px; }.hero-grid, .stats-grid, .two-column-grid, .routine-grid, .progress-highlight, .exercise-library { grid-template-columns: 1fr; }.next-session-card { min-height: 245px; padding: 21px; }.quote-card { min-height: 210px; padding: 26px 21px; }.quote-card p { font-size: 19px; }.stats-grid { gap: 10px; }.metric-card { min-height: 155px; }.content-grid { gap: 10px; }.chart-card, .muscle-card, .recent-card, .records-card { padding: 20px 17px; }.section-heading { align-items: flex-start; }.toolbar, .exercise-toolbar { display: block; }.toolbar-actions, .exercise-filters { margin-top: 14px; overflow-x: auto; padding-bottom: 2px; }.toolbar-actions .filter-button:last-child { margin-left: auto; }.program-banner { grid-template-columns: 1fr; gap: 22px; padding: 20px; }.program-banner .ghost-button { grid-column: auto; justify-self: start; }.routine-card, .new-routine-card { min-height: 245px; }.workout-header { display: block; }.workout-header-actions { margin-top: 18px; justify-content: space-between; }.workout-layout { grid-template-columns: 1fr; }.workout-aside { position: static; }.timer-card { order: 1; }.coach-card { order: 2; }.finish-button { order: 3; }.workout-progress-row { grid-template-columns: 1fr 45px; }.workout-progress-row .progress-track { grid-column: 1 / -1; grid-row: 2; }.sets-header, .set-row { grid-template-columns: 35px 1fr 1fr 38px; gap: 7px; }.exercise-log-card { padding: 19px 14px 13px; }.exercise-title h2 { font-size: 14px; }.previous-line { font-size: 9px; }.highlight-main { grid-template-columns: 1fr; gap: 25px; }.line-chart { margin: 0 5px; }.records-grid { gap: 8px; }.search-field { min-width: 100%; }.exercise-filters { width: 100%; }.exercise-library-card { padding: 13px; }.mobile-nav { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: 69px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; border-top: 1px solid var(--line); background: rgba(13,18,23,.96); backdrop-filter: blur(14px); }.mobile-nav a { display: grid; justify-items: center; gap: 4px; color: var(--muted-2); font-size: 9px; }.mobile-nav a span { font-size: 18px; line-height: 1; }.mobile-nav a.active { color: var(--lime); }.mobile-nav .mobile-action { display: grid; place-items: center; width: 40px; height: 40px; justify-self: center; border-radius: 13px; background: var(--lime); color: #10150c; }.mobile-nav .mobile-action span { font-size: 23px; }
 }
+
+.supabase-login, .supabase-notice { margin-bottom: 24px; padding: 18px 21px; }
+.supabase-login { display: grid; grid-template-columns: 1fr minmax(220px, 300px); gap: 24px; align-items: center; }
+.supabase-login h2, .supabase-notice h2 { margin: 5px 0 7px; font-size: 16px; letter-spacing: -.04em; }
+.supabase-login p, .supabase-notice p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.supabase-login form { display: grid; gap: 9px; }
+.supabase-login .field-label { margin: 0; }
+.supabase-login .field-label input { margin-top: 5px; padding: 9px 10px; }
+.supabase-login .button { width: 100%; }
+.supabase-error { color: var(--red) !important; grid-column: 1 / -1; }
+.supabase-notice code { color: var(--lime); }
+
+@media (max-width: 760px) {
+  .supabase-login { grid-template-columns: 1fr; gap: 16px; }
+}
+
+.login-page { min-height: calc(100vh - 62px); display: grid; place-items: center; padding: 28px 0; }
+.login-card { width: min(430px, 100%); padding: 34px; }
+.login-brand { display: inline-flex; margin-bottom: 46px; }
+.login-heading { margin-bottom: 27px; }.login-heading h1 { margin: 7px 0 11px; font-size: 32px; line-height: 1.02; letter-spacing: -.08em; }.login-heading p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.login-card form { display: grid; gap: 5px; }.login-card .field-label { margin-bottom: 12px; }.login-card .field-label input { padding: 12px; }.login-submit { width: 100%; margin-top: 8px; }.login-message { padding: 12px; border-radius: 9px; color: var(--muted); background: rgba(216,243,106,.06); font-size: 10px; line-height: 1.5; }.login-warning code { color: var(--lime); }.login-error { color: var(--red); font-size: 10px; margin: 3px 0 7px; }
+
+@media (max-width: 760px) {
+  .login-page { min-height: calc(100vh - 120px); }.login-card { padding: 24px 20px; }.login-brand { margin-bottom: 35px; }
+}
