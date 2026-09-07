@@ -166,3 +166,83 @@ h1 em { color: var(--lime); font-style: normal; }
 @media (max-width: 760px) {
   .login-page { min-height: calc(100vh - 120px); }.login-card { padding: 24px 20px; }.login-brand { margin-bottom: 35px; }
 }
+
+.preview-exercise-list { width: min(100%, 720px); display: grid; gap: 8px; margin: 24px 0; text-align: left; }
+.preview-exercise-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.02); }
+.preview-exercise-row strong, .preview-exercise-row small { display: block; }
+.preview-exercise-row small { margin-top: 4px; color: var(--muted-2); font-size: 10px; }
+.preview-exercise-target { color: var(--lime); font: 10px 'DM Mono', monospace; text-align: right; }
+
+@media (max-width: 760px) {
+  .preview-exercise-row { grid-template-columns: 24px minmax(0, 1fr); }
+  .preview-exercise-target { grid-column: 2; text-align: left; }
+}
+
+/* Keep the mobile layout usable at narrow widths and on notched screens. */
+html, body { min-width: 320px; overflow-x: hidden; }
+.surface-card { min-width: 0; }
+.field-label select { display: block; width: 100%; margin-top: 8px; padding: 13px 12px; border: 1px solid var(--line-strong); border-radius: 9px; outline: 0; background: var(--surface); color: var(--text); }
+.routine-day-editor { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 18px; }
+.routine-day-editor .field-label { flex: 1; margin-bottom: 0; }
+
+@media (max-width: 760px) {
+  .main-content { padding-bottom: calc(69px + env(safe-area-inset-bottom)); }
+  .mobile-nav { height: calc(69px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
+  .page-container { width: min(calc(100% - 32px), 620px); }
+  .page-heading h1 { font-size: clamp(29px, 9vw, 38px); }
+  .section-heading { flex-wrap: wrap; }
+  .section-heading > * { min-width: 0; }
+  .routine-stats { flex-wrap: wrap; row-gap: 7px; }
+  .routine-card-footer { flex-wrap: wrap; }
+  .routine-card-footer .button { flex: 1 1 auto; }
+  .delete-link { margin-left: 0; }
+  .exercise-library-card { min-width: 0; }
+  .exercise-copy { min-width: 0; }
+  .exercise-copy h2, .exercise-copy p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lift-info, .record-item div, .recent-item > div { min-width: 0; }
+  .lift-info strong, .lift-info small, .record-item small, .recent-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recent-item { min-width: 0; }
+  .recent-volume { white-space: nowrap; }
+  .dashboard-empty-history { flex-wrap: wrap; }
+  .dashboard-empty-history > .text-link { flex-basis: 100%; text-align: right; }
+  .modal-card { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions .button { flex: 1 1 130px; min-height: 42px; }
+  .builder-intro { display: grid; gap: 8px; align-items: start; }
+  .routine-day-editor { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .routine-day-editor .field-label { grid-column: 1 / -1; }
+  .routine-day-editor .button { width: 100%; }
+  .editor-exercise-row {
+    grid-template-columns: 17px 22px minmax(0, 1fr) minmax(40px, .8fr) minmax(40px, .8fr) auto;
+    grid-template-areas:
+      "drag number name name actions actions"
+      "sets sets sets reps rest rest";
+    gap: 8px 7px;
+  }
+  .editor-exercise-row .drag-handle { grid-area: drag; }
+  .editor-exercise-row .editor-exercise-number { grid-area: number; }
+  .editor-exercise-row .editor-exercise-name { grid-area: name; min-width: 0; }
+  .editor-exercise-row .editor-exercise-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .editor-exercise-row .mini-field { display: block; min-width: 0; }
+  .editor-exercise-row label.mini-field:nth-of-type(1) { grid-area: sets; }
+  .editor-exercise-row label.mini-field:nth-of-type(2) { grid-area: reps; }
+  .editor-exercise-row label.mini-field:nth-of-type(3) { grid-area: rest; }
+  .editor-exercise-row .editor-row-actions { grid-area: actions; align-self: start; }
+  .exercise-title, .exercise-title > div { min-width: 0; }
+  .exercise-title h2 { overflow-wrap: anywhere; }
+  .previous-line { display: flex; align-items: center; gap: 8px; }
+  .previous-line strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .previous-line span { margin-left: auto; }
+  .exercise-card-footer { flex-wrap: wrap; }
+  .exercise-card-footer span { margin-left: auto; }
+  .empty-state .button { width: min(100%, 280px); }
+  .icon-button, .ghost-icon { min-width: 40px; min-height: 40px; }
+}
+
+/* The login view is a standalone surface, not part of the app navigation. */
+.app-shell:has(.login-page) .sidebar,
+.app-shell:has(.login-page) .topbar,
+.app-shell:has(.login-page) .mobile-nav { display: none; }
+.app-shell:has(.login-page) .main-content { width: 100%; margin-left: 0; padding-bottom: 0; }
+.app-shell:has(.login-page) .page-container { width: min(calc(100% - 32px), 430px); padding: 28px 0; }
+.app-shell:has(.login-page) .login-page { min-height: 100dvh; }

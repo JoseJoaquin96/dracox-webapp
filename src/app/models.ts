@@ -19,6 +19,13 @@ export interface RoutineExercise {
   note?: string;
 }
 
+export interface RoutineDay {
+  id?: string;
+  name: string;
+  position: number;
+  exercises: RoutineExercise[];
+}
+
 export interface Routine {
   id: string;
   name: string;
@@ -27,6 +34,8 @@ export interface Routine {
   duration: number;
   color: string;
   exercises: RoutineExercise[];
+  routineDays?: RoutineDay[];
+  archivedAt?: string | null;
 }
 
 export interface WorkoutSet {
@@ -47,6 +56,8 @@ export interface SessionExercise {
 export interface WorkoutSession {
   id: string;
   routineId: string;
+  routineDayId?: string;
+  dayName?: string;
   name: string;
   startedAt: string;
   finishedAt?: string;

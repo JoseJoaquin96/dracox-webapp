@@ -53,8 +53,8 @@ import { WorkoutStore } from './workout.store';
 export class AppComponent {
   private readonly store = inject(WorkoutStore);
   private readonly router = inject(Router);
-  readonly routineCount = computed(() => this.store.routines().length);
-  readonly syncLabel = computed(() => this.store.isAuthenticated() && this.store.remoteState() === 'ready' ? 'Supabase' : 'Guardado local');
+  readonly routineCount = computed(() => this.store.activeRoutines().length);
+  readonly syncLabel = computed(() => this.store.isAuthenticated() && this.store.remoteState() === 'ready' ? 'Supabase' : 'Sin sincronizar');
 
   async signOut(): Promise<void> {
     await this.store.signOut();

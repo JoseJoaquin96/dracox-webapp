@@ -19,6 +19,11 @@ export const routes: Routes = [
   },
   {
     canActivate: [authGuard],
+    path: 'workout/:routineId/:routineDayId',
+    loadComponent: () => import('./pages/workout.component').then((module) => module.WorkoutComponent)
+  },
+  {
+    canActivate: [authGuard],
     path: 'workout/:routineId',
     loadComponent: () => import('./pages/workout.component').then((module) => module.WorkoutComponent)
   },

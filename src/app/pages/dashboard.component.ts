@@ -46,7 +46,7 @@ import { WorkoutStore } from '../workout.store';
 })
 export class DashboardComponent {
   private readonly store = inject(WorkoutStore);
-  readonly nextRoutine = computed(() => this.store.routines()[0] ?? { id: '', name: 'Nueva rutina', focus: 'Empieza a diseñar tu semana', days: 'Hoy', duration: 45, color: '#d8f36a', exercises: [] });
+  readonly nextRoutine = computed(() => this.store.activeRoutines()[0] ?? { id: '', name: 'Nueva rutina', focus: 'Empieza a diseñar tu semana', days: 'Hoy', duration: 45, color: '#d8f36a', exercises: [] });
   readonly completedSessions = computed(() => this.store.sessions().filter((session) => session.status === 'completed'));
   readonly recentSessions = computed(() => this.completedSessions().slice(0, 4));
   readonly weekSessionCount = computed(() => this.completedSessions().filter((session) => this.isThisWeek(session.finishedAt ?? session.startedAt)).length);

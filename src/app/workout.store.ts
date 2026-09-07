@@ -1,9 +1,20 @@
-import { Injectable, computed, effect, signal } from '@angular/core';
-import { Exercise, Routine, SessionExercise, WorkoutSession } from './models';
+import { Injectable, computed, signal } from '@angular/core';
+import { Exercise, Routine, RoutineDay, RoutineExercise, SessionExercise, WorkoutSession } from './models';
 import { getSupabase, isSupabaseConfigured } from './supabase.client';
+
+export type RoutineDraft = {
+  name: string;
+  focus: string;
+  duration: number;
+  color: string;
+  routineDays: RoutineDay[];
+};
 
 type RemoteRoutineExercise = {
   exercise_id: string;
+  routine_day_id: string | null;
+  day_name: string | null;
+  day_position: number | null;
   sets: number;
   rep_range: string;
   rest_seconds: number;
@@ -21,68 +32,57 @@ type RemoteRoutine = {
   exercises: RemoteRoutineExercise[];
 };
 
+type RemoteRoutineStatus = { id: string; archived_at: string | null };
+type RemoteRoutineDay = { id: string; routine_id: string; name: string; position: number };
+
+type RemoteWorkoutSet = {
+  id: string;
+  position: number;
+  weight: number | null;
+  reps: number | null;
+  target: string;
+  completed: boolean;
+};
+
+type RemoteSessionExercise = {
+  id: string;
+  exercise_id: string;
+  position: number;
+  note: string | null;
+  sets: RemoteWorkoutSet[];
+};
+
+type RemoteSession = {
+  id?: string;
+  session_id?: string;
+  routine_id: string;
+  routine_name?: string;
+  name?: string;
+  routine_day_id: string | null;
+  day_name: string | null;
+  started_at: string;
+  finished_at: string | null;
+  duration_minutes: number | null;
+  status?: 'active' | 'completed';
+  exercises: RemoteSessionExercise[];
+};
+
 type RemoteState = 'disabled' | 'signed-out' | 'loading' | 'ready' | 'error';
-
-const starterExercises: Exercise[] = [
-  { id: 'bench', name: 'Press banca con barra', muscle: 'Pecho', secondary: 'Tríceps · Hombro', equipment: 'Barra', kind: 'strength', initials: 'PB', color: '#f1a65b' },
-  { id: 'row', name: 'Remo con barra', muscle: 'Espalda', secondary: 'Bíceps · Core', equipment: 'Barra', kind: 'strength', initials: 'RB', color: '#8c7bff' },
-  { id: 'squat', name: 'Sentadilla trasera', muscle: 'Piernas', secondary: 'Glúteo · Core', equipment: 'Barra', kind: 'strength', initials: 'ST', color: '#b5e46c' },
-  { id: 'lat-pulldown', name: 'Jalón al pecho', muscle: 'Espalda', secondary: 'Bíceps', equipment: 'Polea', kind: 'strength', initials: 'JC', color: '#72b6ff' },
-  { id: 'shoulder-press', name: 'Press militar sentado', muscle: 'Hombros', secondary: 'Tríceps', equipment: 'Mancuernas', kind: 'strength', initials: 'PM', color: '#e98caa' },
-  { id: 'leg-press', name: 'Prensa inclinada', muscle: 'Piernas', secondary: 'Glúteo', equipment: 'Máquina', kind: 'strength', initials: 'PI', color: '#9bdcba' },
-  { id: 'deadlift', name: 'Peso muerto rumano', muscle: 'Isquios', secondary: 'Glúteo · Espalda', equipment: 'Mancuernas', kind: 'strength', initials: 'PR', color: '#efa06f' },
-  { id: 'plank', name: 'Plancha frontal', muscle: 'Core', secondary: 'Abdominales', equipment: 'Peso corporal', kind: 'timed', initials: 'PF', color: '#b4a0f5' }
-];
-
-const starterRoutines: Routine[] = [
-  {
-    id: 'push-a', name: 'Push A', focus: 'Pecho · Hombros · Tríceps', days: 'Lunes', duration: 52, color: '#d8f36a',
-    exercises: [
-      { exerciseId: 'bench', sets: 4, repRange: '6–8', restSeconds: 120 },
-      { exerciseId: 'shoulder-press', sets: 3, repRange: '8–10', restSeconds: 90 },
-      { exerciseId: 'leg-press', sets: 3, repRange: '10–12', restSeconds: 90 }
-    ]
-  },
-  {
-    id: 'pull-a', name: 'Pull A', focus: 'Espalda · Bíceps', days: 'Miércoles', duration: 48, color: '#a99bff',
-    exercises: [
-      { exerciseId: 'row', sets: 4, repRange: '6–8', restSeconds: 120 },
-      { exerciseId: 'lat-pulldown', sets: 3, repRange: '8–12', restSeconds: 90 },
-      { exerciseId: 'deadlift', sets: 3, repRange: '8–10', restSeconds: 120 }
-    ]
-  },
-  {
-    id: 'legs-a', name: 'Legs A', focus: 'Cuádriceps · Glúteo · Core', days: 'Viernes', duration: 56, color: '#91d4ba',
-    exercises: [
-      { exerciseId: 'squat', sets: 4, repRange: '5–8', restSeconds: 150 },
-      { exerciseId: 'leg-press', sets: 4, repRange: '10–12', restSeconds: 90 },
-      { exerciseId: 'plank', sets: 3, repRange: '45 s', restSeconds: 60 }
-    ]
-  }
-];
-
-function createId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
-}
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutStore {
-  readonly exercises = signal<Exercise[]>(this.restore('forge-exercises', starterExercises));
-  readonly routines = signal<Routine[]>(this.restore('forge-routines', starterRoutines));
-  readonly sessions = signal<WorkoutSession[]>(this.restore('forge-sessions', []));
-  readonly activeSession = signal<WorkoutSession | null>(this.restoreNullable<WorkoutSession>('forge-active-session'));
+  readonly exercises = signal<Exercise[]>([]);
+  readonly routines = signal<Routine[]>([]);
+  readonly sessions = signal<WorkoutSession[]>([]);
+  readonly activeSession = signal<WorkoutSession | null>(null);
   readonly remoteState = signal<RemoteState>(isSupabaseConfigured() ? 'signed-out' : 'disabled');
   readonly remoteError = signal<string | null>(null);
   readonly authEmail = signal<string | null>(null);
   readonly isAuthenticated = computed(() => this.authEmail() !== null);
+  readonly activeRoutines = computed(() => this.routines().filter((routine) => !routine.archivedAt));
+  readonly archivedRoutines = computed(() => this.routines().filter((routine) => Boolean(routine.archivedAt)));
 
   constructor() {
-    effect(() => {
-      this.persist('forge-exercises', this.exercises());
-      this.persist('forge-routines', this.routines());
-      this.persist('forge-sessions', this.sessions());
-      this.persist('forge-active-session', this.activeSession());
-    });
     void this.refreshFromSupabase();
   }
 
@@ -90,7 +90,7 @@ export class WorkoutStore {
     const client = getSupabase();
     if (!client) {
       this.remoteState.set('disabled');
-      this.remoteError.set('Crea src/assets/supabase-config.json con la configuración de Supabase.');
+      this.remoteError.set('Supabase no está configurado.');
       return false;
     }
 
@@ -104,7 +104,7 @@ export class WorkoutStore {
     }
 
     this.authEmail.set(data.user?.email ?? email);
-    await this.loadRemoteRoutines();
+    await this.loadRemoteData();
     return this.remoteState() === 'ready';
   }
 
@@ -112,6 +112,10 @@ export class WorkoutStore {
     const client = getSupabase();
     if (client) await client.auth.signOut();
     this.authEmail.set(null);
+    this.exercises.set([]);
+    this.routines.set([]);
+    this.sessions.set([]);
+    this.activeSession.set(null);
     this.remoteError.set(null);
     this.remoteState.set(isSupabaseConfigured() ? 'signed-out' : 'disabled');
   }
@@ -122,52 +126,158 @@ export class WorkoutStore {
 
     const { data, error } = await client.auth.getSession();
     if (error) {
-      this.remoteState.set('error');
-      this.remoteError.set(error.message);
+      this.fail(error.message);
       return;
     }
 
     this.authEmail.set(data.session?.user.email ?? null);
-    if (data.session) await this.loadRemoteRoutines();
+    if (data.session) await this.loadRemoteData();
+  }
+
+  private async loadRemoteData(): Promise<void> {
+    this.remoteState.set('loading');
+    await this.loadRemoteExercises();
+    await this.loadRemoteRoutines();
+    await this.loadRemoteHistory();
+    await this.loadRemoteActiveSession();
+    if (this.remoteState() !== 'error') this.remoteState.set('ready');
+  }
+
+  private async loadRemoteExercises(): Promise<void> {
+    const client = getSupabase();
+    if (!client) return;
+
+    const { data, error } = await client
+      .from('exercises')
+      .select('id,name,muscle,secondary,equipment,kind,initials,color')
+      .order('name');
+    if (error) {
+      this.fail(error.message);
+      return;
+    }
+    this.exercises.set((data ?? []) as Exercise[]);
   }
 
   private async loadRemoteRoutines(): Promise<void> {
     const client = getSupabase();
     if (!client) return;
 
-    this.remoteState.set('loading');
     const { data, error } = await client.rpc('get_my_routines');
     if (error) {
-      this.remoteState.set('error');
-      this.remoteError.set(error.message);
+      this.fail(error.message);
       return;
     }
 
+    const [{ data: statuses, error: statusError }, { data: days, error: daysError }] = await Promise.all([
+      client.from('routines').select('id, archived_at'),
+      client.from('routine_days').select('id, routine_id, name, position').order('position')
+    ]);
+    if (statusError || daysError) {
+      this.fail(statusError?.message ?? daysError?.message ?? 'No se pudieron leer las rutinas.');
+      return;
+    }
+
+    const routineStatuses = new Map(
+      ((statuses ?? []) as RemoteRoutineStatus[]).map((routine) => [routine.id, routine.archived_at])
+    );
+    const routineDays = new Map<string, RoutineDay[]>();
+    ((days ?? []) as RemoteRoutineDay[]).forEach((day) => {
+      const list = routineDays.get(day.routine_id) ?? [];
+      list.push({ id: day.id, name: day.name, position: day.position, exercises: [] });
+      routineDays.set(day.routine_id, list);
+    });
+
     const remoteRoutines = (data ?? []) as RemoteRoutine[];
-    const remoteExercises = remoteRoutines
-      .flatMap((routine) => routine.exercises ?? [])
-      .map((planned) => planned.exercise)
-      .filter((exercise): exercise is Exercise => exercise !== null);
-    const exerciseMap = new Map(this.exercises().map((exercise) => [exercise.id, exercise]));
-    remoteExercises.forEach((exercise) => exerciseMap.set(exercise.id, exercise));
-    this.exercises.set([...exerciseMap.values()]);
-    this.routines.set(remoteRoutines.map((routine) => ({
-      id: routine.id,
-      name: routine.name,
-      focus: routine.focus,
-      days: routine.days,
-      duration: routine.duration,
-      color: routine.color,
-      exercises: (routine.exercises ?? []).map((planned) => ({
-        exerciseId: planned.exercise_id,
-        sets: planned.sets,
-        repRange: planned.rep_range,
-        restSeconds: planned.rest_seconds,
-        note: planned.note ?? undefined
+    remoteRoutines.forEach((routine) => {
+      const daysForRoutine = routineDays.get(routine.id) ?? [];
+      const dayById = new Map(daysForRoutine.map((day) => [day.id, day]));
+      routine.exercises.forEach((planned) => {
+        const day = planned.routine_day_id ? dayById.get(planned.routine_day_id) : undefined;
+        const exercise: RoutineExercise = {
+          exerciseId: planned.exercise_id,
+          sets: planned.sets,
+          repRange: planned.rep_range,
+          restSeconds: planned.rest_seconds,
+          note: planned.note ?? undefined
+        };
+        if (day) day.exercises.push(exercise);
+      });
+
+      if (!daysForRoutine.length && routine.exercises.length) {
+        routineDays.set(routine.id, [{ name: routine.days || 'Día 1', position: 0, exercises: routine.exercises.map((planned) => ({
+          exerciseId: planned.exercise_id,
+          sets: planned.sets,
+          repRange: planned.rep_range,
+          restSeconds: planned.rest_seconds,
+          note: planned.note ?? undefined
+        })) }]);
+      }
+    });
+
+    this.routines.set(remoteRoutines.map((routine) => {
+      const routineDayList = routineDays.get(routine.id) ?? [];
+      return {
+        id: routine.id,
+        name: routine.name,
+        focus: routine.focus,
+        days: routine.days,
+        duration: routine.duration,
+        color: routine.color,
+        archivedAt: routineStatuses.get(routine.id) ?? null,
+        routineDays: routineDayList.sort((a, b) => a.position - b.position),
+        exercises: routineDayList.flatMap((day) => day.exercises)
+      };
+    }));
+  }
+
+  private async loadRemoteHistory(): Promise<void> {
+    const client = getSupabase();
+    if (!client) return;
+    const { data, error } = await client.rpc('get_my_workout_history', { p_routine_id: null });
+    if (error) {
+      this.fail(error.message);
+      return;
+    }
+    this.sessions.set(((data ?? []) as RemoteSession[]).map((session) => this.mapRemoteSession(session)));
+  }
+
+  private async loadRemoteActiveSession(sessionId: string | null = null): Promise<WorkoutSession | null> {
+    const client = getSupabase();
+    if (!client) return null;
+    const { data, error } = await client.rpc('get_my_active_workout', { p_session_id: sessionId });
+    if (error) {
+      this.fail(error.message);
+      return null;
+    }
+    const session = data ? this.mapRemoteSession(data as RemoteSession) : null;
+    this.activeSession.set(session);
+    return session;
+  }
+
+  private mapRemoteSession(raw: RemoteSession): WorkoutSession {
+    return {
+      id: raw.id ?? raw.session_id ?? '',
+      routineId: raw.routine_id,
+      routineDayId: raw.routine_day_id ?? undefined,
+      dayName: raw.day_name ?? undefined,
+      name: raw.routine_name ?? raw.name ?? 'Entrenamiento',
+      startedAt: raw.started_at,
+      finishedAt: raw.finished_at ?? undefined,
+      durationMinutes: raw.duration_minutes ?? undefined,
+      status: raw.status ?? (raw.finished_at ? 'completed' : 'active'),
+      exercises: (raw.exercises ?? []).map((exercise) => ({
+        id: exercise.id,
+        exerciseId: exercise.exercise_id,
+        note: exercise.note ?? undefined,
+        sets: (exercise.sets ?? []).map((set) => ({
+          id: set.id,
+          weight: set.weight,
+          reps: set.reps,
+          target: set.target,
+          completed: set.completed
+        }))
       }))
-    })));
-    this.remoteError.set(null);
-    this.remoteState.set('ready');
+    };
   }
 
   exerciseById(id: string): Exercise | undefined {
@@ -178,152 +288,252 @@ export class WorkoutStore {
     return this.routines().find((routine) => routine.id === id);
   }
 
-  startWorkout(routineId: string): WorkoutSession | null {
+  async startWorkout(routineId: string, routineDayId?: string): Promise<WorkoutSession | null> {
     const routine = this.routineById(routineId);
-    if (!routine) return null;
+    if (!routine || routine.archivedAt) return null;
 
-    const current = this.activeSession();
-    if (current?.routineId === routineId) return current;
+    const day = routine.routineDays?.find((item) => item.id === routineDayId) ?? routine.routineDays?.[0];
+    if (!day?.id) {
+      this.remoteError.set('Esta rutina no tiene ningún día configurado.');
+      return null;
+    }
 
-    const session: WorkoutSession = {
-      id: createId('session'),
-      routineId,
-      name: routine.name,
-      startedAt: new Date().toISOString(),
-      status: 'active',
-      exercises: routine.exercises.map((routineExercise, index) => ({
-        id: `${routineExercise.exerciseId}-${index}`,
-        exerciseId: routineExercise.exerciseId,
-        sets: Array.from({ length: routineExercise.sets }, (_, setIndex) => ({
-          id: `set-${setIndex + 1}`,
-          weight: this.defaultWeight(routineExercise.exerciseId, setIndex),
-          reps: null,
-          target: routineExercise.repRange,
-          completed: false
-        }))
-      }))
-    };
-    this.activeSession.set(session);
+    const client = getSupabase();
+    if (!client || !this.isAuthenticated()) {
+      this.remoteError.set('No hay una sesión de Supabase activa.');
+      return null;
+    }
+
+    this.remoteState.set('loading');
+    const { data, error } = await client.rpc('start_workout', {
+      p_routine_id: routineId,
+      p_routine_day_id: day.id
+    });
+    if (error) {
+      this.fail(error.message);
+      return null;
+    }
+    const session = await this.loadRemoteActiveSession(data as string);
+    if (session) this.remoteState.set('ready');
     return session;
   }
 
-  updateSet(sessionExerciseId: string, setId: string, values: { weight?: number | null; reps?: number | null }): void {
+  async updateSet(
+    sessionExerciseId: string,
+    setId: string,
+    values: { weight?: number | null; reps?: number | null }
+  ): Promise<void> {
     const session = this.activeSession();
-    if (!session) return;
-    this.activeSession.set({
-      ...session,
-      exercises: session.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : ({
-        ...exercise,
-        sets: exercise.sets.map((set) => set.id !== setId ? set : ({ ...set, ...values }))
-      }))
+    const currentSet = session?.exercises.find((exercise) => exercise.id === sessionExerciseId)?.sets.find((set) => set.id === setId);
+    const client = getSupabase();
+    if (!session || !currentSet || !client) return;
+
+    await this.persistSet(client, sessionExerciseId, setId, {
+      weight: values.weight === undefined ? currentSet.weight : values.weight,
+      reps: values.reps === undefined ? currentSet.reps : values.reps,
+      completed: currentSet.completed
     });
   }
 
-  toggleSet(sessionExerciseId: string, setId: string): void {
+  async toggleSet(sessionExerciseId: string, setId: string): Promise<void> {
     const session = this.activeSession();
-    if (!session) return;
-    this.activeSession.set({
+    const currentSet = session?.exercises.find((exercise) => exercise.id === sessionExerciseId)?.sets.find((set) => set.id === setId);
+    const client = getSupabase();
+    if (!session || !currentSet || !client) return;
+
+    await this.persistSet(client, sessionExerciseId, setId, {
+      weight: currentSet.weight,
+      reps: currentSet.reps,
+      completed: !currentSet.completed
+    });
+  }
+
+  private async persistSet(
+    client: NonNullable<ReturnType<typeof getSupabase>>,
+    sessionExerciseId: string,
+    setId: string,
+    values: { weight: number | null; reps: number | null; completed: boolean }
+  ): Promise<void> {
+    const { data, error } = await client.rpc('update_workout_set', {
+      p_set_id: setId,
+      p_weight: values.weight,
+      p_reps: values.reps,
+      p_completed: values.completed
+    });
+    if (error) {
+      this.fail(error.message);
+      return;
+    }
+
+    const saved = data as RemoteWorkoutSet;
+    this.activeSession.update((session) => session ? {
       ...session,
-      exercises: session.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : ({
+      exercises: session.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : {
         ...exercise,
-        sets: exercise.sets.map((set) => set.id !== setId ? set : ({
+        sets: exercise.sets.map((set) => set.id !== setId ? set : {
           ...set,
-          completed: !set.completed,
-          reps: set.reps ?? 8
+          weight: saved.weight,
+          reps: saved.reps,
+          completed: saved.completed
+        })
+      })
+    } : session);
+  }
+
+  async addSet(sessionExerciseId: string): Promise<void> {
+    const client = getSupabase();
+    if (!client) return;
+    const { data, error } = await client.rpc('add_workout_set', { p_session_exercise_id: sessionExerciseId });
+    if (error) {
+      this.fail(error.message);
+      return;
+    }
+    const saved = data as RemoteWorkoutSet;
+    this.activeSession.update((session) => session ? {
+      ...session,
+      exercises: session.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : {
+        ...exercise,
+        sets: [...exercise.sets, {
+          id: saved.id,
+          weight: saved.weight,
+          reps: saved.reps,
+          target: saved.target,
+          completed: saved.completed
+        }]
+      })
+    } : session);
+  }
+
+  async saveWorkout(): Promise<boolean> {
+    const session = this.activeSession();
+    if (!session) return false;
+    const saved = await this.loadRemoteActiveSession(session.id);
+    if (saved) this.remoteState.set('ready');
+    return saved !== null;
+  }
+
+  async finishWorkout(): Promise<boolean> {
+    const session = this.activeSession();
+    const client = getSupabase();
+    if (!session || !client) return false;
+
+    const { error } = await client.rpc('finish_workout', { p_session_id: session.id });
+    if (error) {
+      this.fail(error.message);
+      return false;
+    }
+    this.activeSession.set(null);
+    await this.loadRemoteHistory();
+    this.remoteState.set('ready');
+    return true;
+  }
+
+  async createRoutineProgram(input: RoutineDraft): Promise<boolean> {
+    const client = getSupabase();
+    if (!client) return this.fail('Supabase no está configurado.');
+    const { error } = await client.rpc('create_routine_program', this.routinePayload(input));
+    if (error) {
+      this.fail(error.message);
+      return false;
+    }
+    await this.loadRemoteRoutines();
+    this.remoteState.set('ready');
+    return true;
+  }
+
+  async updateRoutineProgram(id: string, input: RoutineDraft): Promise<boolean> {
+    const client = getSupabase();
+    if (!client) return this.fail('Supabase no está configurado.');
+    const { error } = await client.rpc('update_routine_program', {
+      p_routine_id: id,
+      ...this.routinePayload(input)
+    });
+    if (error) {
+      this.fail(error.message);
+      return false;
+    }
+    await this.loadRemoteRoutines();
+    this.remoteState.set('ready');
+    return true;
+  }
+
+  private routinePayload(input: RoutineDraft): Record<string, unknown> {
+    return {
+      p_name: input.name,
+      p_focus: input.focus,
+      p_duration: input.duration,
+      p_color: input.color,
+      p_days: input.routineDays.map((day) => ({
+        name: day.name,
+        exercises: day.exercises.map((exercise) => ({
+          exercise_id: exercise.exerciseId,
+          sets: exercise.sets,
+          rep_range: exercise.repRange,
+          rest_seconds: exercise.restSeconds,
+          note: exercise.note ?? null
         }))
       }))
-    });
-  }
-
-  addSet(sessionExerciseId: string): void {
-    const session = this.activeSession();
-    if (!session) return;
-    this.activeSession.set({
-      ...session,
-      exercises: session.exercises.map((exercise) => {
-        if (exercise.id !== sessionExerciseId) return exercise;
-        const previous = exercise.sets.at(-1);
-        return {
-          ...exercise,
-          sets: [...exercise.sets, {
-            id: createId('set'),
-            weight: previous?.weight ?? null,
-            reps: null,
-            target: previous?.target ?? '8–10',
-            completed: false
-          }]
-        };
-      })
-    });
-  }
-
-  finishWorkout(): void {
-    const session = this.activeSession();
-    if (!session) return;
-    const finishedAt = new Date();
-    const durationMinutes = Math.max(1, Math.round((finishedAt.getTime() - new Date(session.startedAt).getTime()) / 60000));
-    const finished = { ...session, status: 'completed' as const, finishedAt: finishedAt.toISOString(), durationMinutes };
-    this.sessions.update((sessions) => [finished, ...sessions.filter((item) => item.id !== session.id)]);
-    this.activeSession.set(null);
-  }
-
-  addRoutine(name: string, focus: string): Routine {
-    const routine: Routine = {
-      id: createId('routine'), name, focus: focus || 'Nueva rutina', days: 'Sin programar', duration: 45,
-      color: '#d8f36a', exercises: [{ exerciseId: 'bench', sets: 3, repRange: '8–10', restSeconds: 90 }]
     };
-    this.routines.update((routines) => [...routines, routine]);
-    return routine;
   }
 
-  updateRoutine(id: string, changes: Partial<Pick<Routine, 'name' | 'focus' | 'days' | 'duration' | 'color' | 'exercises'>>): void {
-    this.routines.update((routines) => routines.map((routine) => routine.id === id ? { ...routine, ...changes } : routine));
-  }
-
-  renameRoutine(id: string, name: string): void {
-    this.updateRoutine(id, { name });
-  }
-
-  deleteRoutine(id: string): void {
-    this.routines.update((routines) => routines.filter((routine) => routine.id !== id));
-  }
-
-  addExercise(name: string, muscle: string, equipment: string): void {
-    const initials = name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase();
-    this.exercises.update((exercises) => [...exercises, {
-      id: createId('exercise'), name, muscle: muscle || 'General', secondary: '—', equipment: equipment || 'Libre', kind: 'strength', initials, color: '#d8f36a'
-    }]);
-  }
-
-  private defaultWeight(exerciseId: string, setIndex: number): number | null {
-    const lastLoggedSet = this.sessions()
-      .filter((session) => session.status === 'completed')
-      .flatMap((session) => session.exercises)
-      .filter((exercise) => exercise.exerciseId === exerciseId)
-      .flatMap((exercise) => exercise.sets)
-      .find((set) => set.completed && set.weight !== null);
-    if (lastLoggedSet?.weight !== null && lastLoggedSet?.weight !== undefined) return lastLoggedSet.weight;
-
-    const weights: Record<string, number> = { bench: 80, row: 65, squat: 100, 'lat-pulldown': 55, 'shoulder-press': 22, 'leg-press': 160, deadlift: 70 };
-    const base = weights[exerciseId];
-    return base ? base + (setIndex > 1 ? 0 : 0) : null;
-  }
-
-  private restore<T>(key: string, fallback: T): T {
-    if (typeof localStorage === 'undefined') return fallback;
-    try {
-      const value = localStorage.getItem(key);
-      return value ? JSON.parse(value) as T : fallback;
-    } catch {
-      return fallback;
+  async archiveRoutine(id: string): Promise<boolean> {
+    const client = getSupabase();
+    if (!client) return this.fail('Supabase no está configurado.');
+    const { error } = await client.rpc('archive_routine', { p_routine_id: id });
+    if (error) {
+      this.fail(error.message);
+      return false;
     }
+    this.routines.update((routines) => routines.map((routine) => routine.id === id ? { ...routine, archivedAt: new Date().toISOString() } : routine));
+    this.remoteState.set('ready');
+    return true;
   }
 
-  private restoreNullable<T>(key: string): T | null {
-    return this.restore<T | null>(key, null);
+  async unarchiveRoutine(id: string): Promise<boolean> {
+    const client = getSupabase();
+    if (!client) return this.fail('Supabase no está configurado.');
+    const { error } = await client.rpc('unarchive_routine', { p_routine_id: id });
+    if (error) {
+      this.fail(error.message);
+      return false;
+    }
+    this.routines.update((routines) => routines.map((routine) => routine.id === id ? { ...routine, archivedAt: null } : routine));
+    this.remoteState.set('ready');
+    return true;
   }
 
-  private persist<T>(key: string, value: T): void {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(value));
+  async addExercise(name: string, muscle: string, equipment: string): Promise<void> {
+    const client = getSupabase();
+    if (!client) {
+      this.fail('Supabase no está configurado.');
+      return;
+    }
+    const { data: user } = await client.auth.getUser();
+    if (!user.user) {
+      this.fail('Inicia sesión para crear ejercicios.');
+      return;
+    }
+    const initials = name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase();
+    const { error } = await client.from('exercises').insert({
+      owner_id: user.user.id,
+      name,
+      muscle: muscle || 'General',
+      secondary: '',
+      equipment: equipment || 'Libre',
+      kind: 'strength',
+      initials,
+      color: '#d8f36a'
+    });
+    if (error) {
+      this.fail(error.message);
+      return;
+    }
+    await this.loadRemoteExercises();
+  }
+
+  private fail(message: string): false {
+    this.remoteState.set('error');
+    this.remoteError.set(message);
+    return false;
   }
 }
