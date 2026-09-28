@@ -37,5 +37,10 @@ export const routes: Routes = [
     path: 'exercises',
     loadComponent: () => import('./pages/exercises.component').then((module) => module.ExercisesComponent)
   },
+  {
+    canActivate: [authGuard],
+    path: 'admin/errors',
+    loadComponent: () => import('./pages/admin-errors.component').then((module) => module.AdminErrorsComponent)
+  },
   { path: '**', redirectTo: '' }
 ];

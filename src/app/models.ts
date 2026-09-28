@@ -65,3 +65,14 @@ export interface WorkoutSession {
   status: 'active' | 'completed';
   exercises: SessionExercise[];
 }
+
+export interface AppErrorLog {
+  id: number;
+  userId: string | null;
+  severity: 'error' | 'warning' | 'info';
+  source: string;
+  message: string;
+  route: string | null;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+}

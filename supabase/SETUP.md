@@ -90,8 +90,10 @@ keep every routine and workout session scoped to its owner.
 7. Apply `migrations/0003_current_routine_exercises.sql` in the Supabase SQL Editor.
 8. Apply `migrations/0004_flexible_routines.sql` in the Supabase SQL Editor.
 9. Apply `migrations/0005_remote_routine_crud_and_workouts.sql` in the Supabase SQL Editor.
-10. Replace `REEMPLAZA_CON_TU_EMAIL` in `seeds/001_current_routine.sql` and run it once in the SQL Editor. It creates one four-day routine and archives the old four-routine version if present.
-11. Run `tests/0001_schema_checks.sql`, `tests/0002_basic_workout_checks.sql`, `tests/0003_current_routine_checks.sql`, `tests/0004_flexible_routines_checks.sql` and `tests/0005_remote_routine_crud_and_workouts_checks.sql` in the SQL Editor as verification steps.
+10. Apply `migrations/0006_error_logs_and_admin.sql` in the Supabase SQL Editor.
+11. Replace `REEMPLAZA_CON_TU_EMAIL` in `seeds/001_current_routine.sql` and run it once in the SQL Editor. It creates one four-day routine and archives the old four-routine version if present.
+12. Promote your account to administrator with `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'tu-email');`.
+13. Run the matching files in `tests/` (`0001` through `0006`) in the SQL Editor as verification steps.
 
 The public/publishable key may be used by the browser only together with the
 RLS policies in the migration. Never expose the `service_role` key.

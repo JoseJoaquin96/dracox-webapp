@@ -20,6 +20,7 @@ import { WorkoutStore } from './workout.store';
           <a routerLink="/routines" routerLinkActive="active"><span class="nav-icon">▦</span> Rutinas</a>
           <a routerLink="/progress" routerLinkActive="active"><span class="nav-icon">◔</span> Progreso</a>
           <a routerLink="/exercises" routerLinkActive="active"><span class="nav-icon">✦</span> Ejercicios</a>
+          @if (store.isAdmin()) { <a routerLink="/admin/errors" routerLinkActive="active"><span class="nav-icon">!</span> Admin</a> }
         </nav>
 
         <div class="sidebar-bottom">
@@ -33,10 +34,12 @@ import { WorkoutStore } from './workout.store';
           <div class="mobile-brand"><span class="brand-mark">F</span><strong>forge</strong></div>
           <div class="topbar-actions">
             <span class="sync-pill"><i></i> {{ syncLabel() }}</span>
-            <button class="icon-button" aria-label="Notificaciones">♧<span class="notification-dot"></span></button>
             <button class="avatar avatar-button" (click)="signOut()" aria-label="Cerrar sesión" title="Cerrar sesión">J</button>
           </div>
         </header>
+        @if (store.remoteState() === 'loading') { <div class="app-status app-status-loading" role="status">Sincronizando datos…</div> }
+        @if (store.remoteError(); as error) { <div class="app-status app-status-error" role="alert"><span>{{ error }}</span><button type="button" (click)="store.clearRemoteError()" aria-label="Cerrar aviso">×</button></div> }
+        @if (store.pendingWrites() > 0) { <div class="app-status app-status-pending" role="status">{{ store.pendingWrites() }} cambio{{ store.pendingWrites() === 1 ? '' : 's' }} pendiente{{ store.pendingWrites() === 1 ? '' : 's' }} de sincronizar.</div> }
         <div class="page-container"><router-outlet /></div>
       </main>
 
@@ -51,10 +54,35 @@ import { WorkoutStore } from './workout.store';
   `
 })
 export class AppComponent {
-  private readonly store = inject(WorkoutStore);
+  readonly store = inject(WorkoutStore);
   private readonly router = inject(Router);
   readonly routineCount = computed(() => this.store.activeRoutines().length);
-  readonly syncLabel = computed(() => this.store.isAuthenticated() && this.store.remoteState() === 'ready' ? 'Supabase' : 'Sin sincronizar');
+  readonly syncLabel = computed(() => {
+    if (this.store.pendingWrites() > 0) return 'Pendiente de sincronizar';
+    if (this.store.remoteState() === 'loading') return 'Sincronizando';
+    if (this.store.remoteState() === 'error') return 'Error de sincronización';
+    if (this.store.remoteState() === 'disabled') return 'Modo local';
+    return this.store.isAuthenticated() ? 'Supabase' : 'Sin sincronizar';
+  });
+
+  constructor() {
+    window.addEventListener('online', this.retryPendingWrites);
+    window.addEventListener('error', this.captureWindowError);
+    window.addEventListener('unhandledrejection', this.captureRejectedPromise);
+  }
+
+  private readonly retryPendingWrites = (): void => { void this.store.retryPendingWrites(); };
+  private readonly captureWindowError = (event: ErrorEvent): void => {
+    void this.store.logClientError(event.message || 'Error de ventana', 'window.error', {
+      filename: event.filename,
+      line: event.lineno,
+      column: event.colno
+    });
+  };
+  private readonly captureRejectedPromise = (event: PromiseRejectionEvent): void => {
+    const reason = event.reason instanceof Error ? event.reason.message : String(event.reason);
+    void this.store.logClientError(reason, 'unhandledrejection');
+  };
 
   async signOut(): Promise<void> {
     await this.store.signOut();

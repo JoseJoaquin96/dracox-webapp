@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { Exercise, Routine, RoutineDay, RoutineExercise, SessionExercise, WorkoutSession } from './models';
+import { AppErrorLog, Exercise, Routine, RoutineDay, RoutineExercise, SessionExercise, WorkoutSession } from './models';
 import { getSupabase, isSupabaseConfigured } from './supabase.client';
 
 export type RoutineDraft = {
@@ -69,6 +69,26 @@ type RemoteSession = {
 
 type RemoteState = 'disabled' | 'signed-out' | 'loading' | 'ready' | 'error';
 
+type PendingSetUpdate = {
+  sessionId: string;
+  sessionExerciseId: string;
+  setId: string;
+  weight: number | null;
+  reps: number | null;
+  completed: boolean;
+};
+
+type CacheSnapshot = {
+  exercises: Exercise[];
+  routines: Routine[];
+  sessions: WorkoutSession[];
+  activeSession: WorkoutSession | null;
+  pendingSetUpdates: PendingSetUpdate[];
+};
+
+const CACHE_PREFIX = 'forge-workout-cache:';
+const PENDING_SET_KEY = 'forge-workout-pending-sets:';
+
 @Injectable({ providedIn: 'root' })
 export class WorkoutStore {
   readonly exercises = signal<Exercise[]>([]);
@@ -78,13 +98,22 @@ export class WorkoutStore {
   readonly remoteState = signal<RemoteState>(isSupabaseConfigured() ? 'signed-out' : 'disabled');
   readonly remoteError = signal<string | null>(null);
   readonly authEmail = signal<string | null>(null);
+  readonly authUserId = signal<string | null>(null);
+  readonly isAdmin = signal(false);
+  readonly errorLogs = signal<AppErrorLog[]>([]);
+  readonly pendingSetUpdates = signal<PendingSetUpdate[]>([]);
+  readonly pendingWrites = computed(() => this.pendingSetUpdates().length);
   readonly isAuthenticated = computed(() => this.authEmail() !== null);
   readonly activeRoutines = computed(() => this.routines().filter((routine) => !routine.archivedAt));
   readonly archivedRoutines = computed(() => this.routines().filter((routine) => Boolean(routine.archivedAt)));
+  readonly strengthExercises = computed(() => this.exercises().filter((exercise) => exercise.kind === 'strength'));
+  private readonly initialLoad: Promise<void>;
 
   constructor() {
-    void this.refreshFromSupabase();
+    this.initialLoad = this.refreshFromSupabase();
   }
+
+  async waitUntilReady(): Promise<void> { await this.initialLoad; }
 
   async signIn(email: string, password: string): Promise<boolean> {
     const client = getSupabase();
@@ -103,6 +132,7 @@ export class WorkoutStore {
       return false;
     }
 
+    this.authUserId.set(data.user?.id ?? null);
     this.authEmail.set(data.user?.email ?? email);
     await this.loadRemoteData();
     return this.remoteState() === 'ready';
@@ -112,6 +142,10 @@ export class WorkoutStore {
     const client = getSupabase();
     if (client) await client.auth.signOut();
     this.authEmail.set(null);
+    this.authUserId.set(null);
+    this.isAdmin.set(false);
+    this.errorLogs.set([]);
+    this.pendingSetUpdates.set([]);
     this.exercises.set([]);
     this.routines.set([]);
     this.sessions.set([]);
@@ -119,6 +153,8 @@ export class WorkoutStore {
     this.remoteError.set(null);
     this.remoteState.set(isSupabaseConfigured() ? 'signed-out' : 'disabled');
   }
+
+  clearRemoteError(): void { this.remoteError.set(null); }
 
   private async refreshFromSupabase(): Promise<void> {
     const client = getSupabase();
@@ -130,17 +166,35 @@ export class WorkoutStore {
       return;
     }
 
+    this.authUserId.set(data.session?.user.id ?? null);
     this.authEmail.set(data.session?.user.email ?? null);
     if (data.session) await this.loadRemoteData();
   }
 
   private async loadRemoteData(): Promise<void> {
     this.remoteState.set('loading');
+    const hasCache = this.hydrateCache();
+    await this.loadRemoteProfile();
     await this.loadRemoteExercises();
     await this.loadRemoteRoutines();
     await this.loadRemoteHistory();
     await this.loadRemoteActiveSession();
+    await this.retryPendingWrites();
+    this.persistCache();
     if (this.remoteState() !== 'error') this.remoteState.set('ready');
+    else if (hasCache) this.remoteError.set(this.remoteError() ?? 'Sin conexión. Mostrando la última copia guardada.');
+  }
+
+  private async loadRemoteProfile(): Promise<void> {
+    const client = getSupabase();
+    if (!client || !this.authUserId()) return;
+    const { data, error } = await client.from('profiles').select('is_admin').eq('id', this.authUserId()).maybeSingle();
+    if (error) {
+      // The admin migration is optional for the core workout loop.
+      this.isAdmin.set(false);
+      return;
+    }
+    this.isAdmin.set(Boolean((data as { is_admin?: boolean } | null)?.is_admin));
   }
 
   private async loadRemoteExercises(): Promise<void> {
@@ -156,6 +210,7 @@ export class WorkoutStore {
       return;
     }
     this.exercises.set((data ?? []) as Exercise[]);
+    this.persistCache();
   }
 
   private async loadRemoteRoutines(): Promise<void> {
@@ -228,6 +283,7 @@ export class WorkoutStore {
         exercises: routineDayList.flatMap((day) => day.exercises)
       };
     }));
+    this.persistCache();
   }
 
   private async loadRemoteHistory(): Promise<void> {
@@ -239,6 +295,7 @@ export class WorkoutStore {
       return;
     }
     this.sessions.set(((data ?? []) as RemoteSession[]).map((session) => this.mapRemoteSession(session)));
+    this.persistCache();
   }
 
   private async loadRemoteActiveSession(sessionId: string | null = null): Promise<WorkoutSession | null> {
@@ -251,6 +308,7 @@ export class WorkoutStore {
     }
     const session = data ? this.mapRemoteSession(data as RemoteSession) : null;
     this.activeSession.set(session);
+    this.persistCache();
     return session;
   }
 
@@ -278,6 +336,127 @@ export class WorkoutStore {
         }))
       }))
     };
+  }
+
+  async logClientError(message: string, source = 'client', details: Record<string, unknown> | null = null): Promise<void> {
+    const client = getSupabase();
+    const userId = this.authUserId();
+    if (!client || !userId) return;
+    await client.from('app_error_logs').insert({
+      user_id: userId,
+      severity: 'error',
+      source,
+      message: message.slice(0, 2000),
+      route: typeof location === 'undefined' ? null : location.pathname,
+      details
+    });
+  }
+
+  async loadAdminErrorLogs(): Promise<boolean> {
+    const client = getSupabase();
+    if (!client || !this.isAdmin()) return false;
+    const { data, error } = await client
+      .from('app_error_logs')
+      .select('id,user_id,severity,source,message,route,details,created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) {
+      this.fail(error.message, 'admin-errors');
+      return false;
+    }
+    this.errorLogs.set(((data ?? []) as Array<Record<string, unknown>>).map((log) => ({
+      id: Number(log['id']),
+      userId: (log['user_id'] as string | null) ?? null,
+      severity: (log['severity'] as AppErrorLog['severity']) ?? 'error',
+      source: String(log['source'] ?? 'client'),
+      message: String(log['message'] ?? ''),
+      route: (log['route'] as string | null) ?? null,
+      details: (log['details'] as Record<string, unknown> | null) ?? null,
+      createdAt: String(log['created_at'] ?? '')
+    })));
+    return true;
+  }
+
+  async retryPendingWrites(): Promise<void> {
+    const client = getSupabase();
+    const session = this.activeSession();
+    if (!client || !session || !this.pendingSetUpdates().length) return;
+    const remaining: PendingSetUpdate[] = [];
+    for (const update of this.pendingSetUpdates()) {
+      if (update.sessionId !== session.id) {
+        remaining.push(update);
+        continue;
+      }
+      const { data, error } = await client.rpc('update_workout_set', {
+        p_set_id: update.setId,
+        p_weight: update.weight,
+        p_reps: update.reps,
+        p_completed: update.completed
+      });
+      if (error) {
+        remaining.push(update);
+        continue;
+      }
+      this.applySavedSet(update.sessionExerciseId, update.setId, data as RemoteWorkoutSet);
+    }
+    this.pendingSetUpdates.set(remaining);
+    this.persistCache();
+    if (!remaining.length) this.clearRemoteError();
+  }
+
+  private applySavedSet(sessionExerciseId: string, setId: string, saved: RemoteWorkoutSet): void {
+    this.activeSession.update((session) => session ? {
+      ...session,
+      exercises: session.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : {
+        ...exercise,
+        sets: exercise.sets.map((set) => set.id !== setId ? set : {
+          ...set,
+          weight: saved.weight,
+          reps: saved.reps,
+          completed: saved.completed
+        })
+      })
+    } : session);
+  }
+
+  private queueSetUpdate(update: PendingSetUpdate): void {
+    this.pendingSetUpdates.update((updates) => [...updates.filter((item) => item.setId !== update.setId), update]);
+    this.persistCache();
+  }
+
+  private cacheKey(): string | null {
+    const userId = this.authUserId();
+    return userId ? `${CACHE_PREFIX}${userId}` : null;
+  }
+
+  private hydrateCache(): boolean {
+    const key = this.cacheKey();
+    if (!key || typeof localStorage === 'undefined') return false;
+    try {
+      const cache = JSON.parse(localStorage.getItem(key) ?? 'null') as Partial<CacheSnapshot> | null;
+      if (!cache) return false;
+      if (Array.isArray(cache.exercises)) this.exercises.set(cache.exercises);
+      if (Array.isArray(cache.routines)) this.routines.set(cache.routines);
+      if (Array.isArray(cache.sessions)) this.sessions.set(cache.sessions);
+      if (cache.activeSession !== undefined) this.activeSession.set(cache.activeSession ?? null);
+      if (Array.isArray(cache.pendingSetUpdates)) this.pendingSetUpdates.set(cache.pendingSetUpdates);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private persistCache(): void {
+    const key = this.cacheKey();
+    if (!key || typeof localStorage === 'undefined') return;
+    const cache: CacheSnapshot = {
+      exercises: this.exercises(),
+      routines: this.routines(),
+      sessions: this.sessions(),
+      activeSession: this.activeSession(),
+      pendingSetUpdates: this.pendingSetUpdates()
+    };
+    try { localStorage.setItem(key, JSON.stringify(cache)); } catch { /* Storage may be unavailable or full. */ }
   }
 
   exerciseById(id: string): Exercise | undefined {
@@ -354,6 +533,24 @@ export class WorkoutStore {
     setId: string,
     values: { weight: number | null; reps: number | null; completed: boolean }
   ): Promise<void> {
+    const session = this.activeSession();
+    if (!session) return;
+    const pending: PendingSetUpdate = {
+      sessionId: session.id,
+      sessionExerciseId,
+      setId,
+      weight: values.weight,
+      reps: values.reps,
+      completed: values.completed
+    };
+    this.activeSession.update((current) => current ? {
+      ...current,
+      exercises: current.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : {
+        ...exercise,
+        sets: exercise.sets.map((set) => set.id !== setId ? set : { ...set, ...values })
+      })
+    } : current);
+    this.persistCache();
     const { data, error } = await client.rpc('update_workout_set', {
       p_set_id: setId,
       p_weight: values.weight,
@@ -361,28 +558,20 @@ export class WorkoutStore {
       p_completed: values.completed
     });
     if (error) {
-      this.fail(error.message);
+      this.queueSetUpdate(pending);
+      this.fail(error.message, 'workout-set');
       return;
     }
 
-    const saved = data as RemoteWorkoutSet;
-    this.activeSession.update((session) => session ? {
-      ...session,
-      exercises: session.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : {
-        ...exercise,
-        sets: exercise.sets.map((set) => set.id !== setId ? set : {
-          ...set,
-          weight: saved.weight,
-          reps: saved.reps,
-          completed: saved.completed
-        })
-      })
-    } : session);
+    this.applySavedSet(sessionExerciseId, setId, data as RemoteWorkoutSet);
+    this.pendingSetUpdates.update((updates) => updates.filter((item) => item.setId !== setId));
+    this.persistCache();
   }
 
   async addSet(sessionExerciseId: string): Promise<void> {
     const client = getSupabase();
     if (!client) return;
+    this.remoteState.set('loading');
     const { data, error } = await client.rpc('add_workout_set', { p_session_exercise_id: sessionExerciseId });
     if (error) {
       this.fail(error.message);
@@ -402,34 +591,47 @@ export class WorkoutStore {
         }]
       })
     } : session);
+    this.persistCache();
+    this.remoteState.set('ready');
   }
 
   async saveWorkout(): Promise<boolean> {
     const session = this.activeSession();
     if (!session) return false;
+    await this.retryPendingWrites();
     const saved = await this.loadRemoteActiveSession(session.id);
     if (saved) this.remoteState.set('ready');
-    return saved !== null;
+    this.persistCache();
+    return saved !== null || this.activeSession() !== null;
   }
 
   async finishWorkout(): Promise<boolean> {
     const session = this.activeSession();
     const client = getSupabase();
     if (!session || !client) return false;
+    await this.retryPendingWrites();
+    if (this.pendingSetUpdates().length) {
+      this.fail('Hay cambios pendientes de sincronizar. Recupera la conexión e inténtalo de nuevo.', 'finish-workout');
+      return false;
+    }
 
+    this.remoteState.set('loading');
     const { error } = await client.rpc('finish_workout', { p_session_id: session.id });
     if (error) {
       this.fail(error.message);
       return false;
     }
     this.activeSession.set(null);
+    this.pendingSetUpdates.set([]);
     await this.loadRemoteHistory();
+    this.persistCache();
     this.remoteState.set('ready');
     return true;
   }
 
   async createRoutineProgram(input: RoutineDraft): Promise<boolean> {
     const client = getSupabase();
+    this.remoteState.set('loading');
     if (!client) return this.fail('Supabase no está configurado.');
     const { error } = await client.rpc('create_routine_program', this.routinePayload(input));
     if (error) {
@@ -443,6 +645,7 @@ export class WorkoutStore {
 
   async updateRoutineProgram(id: string, input: RoutineDraft): Promise<boolean> {
     const client = getSupabase();
+    this.remoteState.set('loading');
     if (!client) return this.fail('Supabase no está configurado.');
     const { error } = await client.rpc('update_routine_program', {
       p_routine_id: id,
@@ -478,6 +681,7 @@ export class WorkoutStore {
 
   async archiveRoutine(id: string): Promise<boolean> {
     const client = getSupabase();
+    this.remoteState.set('loading');
     if (!client) return this.fail('Supabase no está configurado.');
     const { error } = await client.rpc('archive_routine', { p_routine_id: id });
     if (error) {
@@ -485,12 +689,14 @@ export class WorkoutStore {
       return false;
     }
     this.routines.update((routines) => routines.map((routine) => routine.id === id ? { ...routine, archivedAt: new Date().toISOString() } : routine));
+    this.persistCache();
     this.remoteState.set('ready');
     return true;
   }
 
   async unarchiveRoutine(id: string): Promise<boolean> {
     const client = getSupabase();
+    this.remoteState.set('loading');
     if (!client) return this.fail('Supabase no está configurado.');
     const { error } = await client.rpc('unarchive_routine', { p_routine_id: id });
     if (error) {
@@ -498,20 +704,22 @@ export class WorkoutStore {
       return false;
     }
     this.routines.update((routines) => routines.map((routine) => routine.id === id ? { ...routine, archivedAt: null } : routine));
+    this.persistCache();
     this.remoteState.set('ready');
     return true;
   }
 
-  async addExercise(name: string, muscle: string, equipment: string): Promise<void> {
+  async addExercise(name: string, muscle: string, equipment: string): Promise<boolean> {
     const client = getSupabase();
+    this.remoteState.set('loading');
     if (!client) {
       this.fail('Supabase no está configurado.');
-      return;
+      return false;
     }
     const { data: user } = await client.auth.getUser();
     if (!user.user) {
       this.fail('Inicia sesión para crear ejercicios.');
-      return;
+      return false;
     }
     const initials = name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase();
     const { error } = await client.from('exercises').insert({
@@ -526,14 +734,16 @@ export class WorkoutStore {
     });
     if (error) {
       this.fail(error.message);
-      return;
+      return false;
     }
     await this.loadRemoteExercises();
+    return true;
   }
 
-  private fail(message: string): false {
+  private fail(message: string, source = 'remote'): false {
     this.remoteState.set('error');
     this.remoteError.set(message);
+    void this.logClientError(message, source);
     return false;
   }
 }

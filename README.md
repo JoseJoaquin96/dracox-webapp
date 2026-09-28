@@ -5,14 +5,12 @@ Primera versión de una aplicación personal para planificar y registrar entrena
 ## Incluye
 
 - Dashboard de hoy con próxima sesión, volumen, tiempo y racha.
-- CRUD básico de rutinas con persistencia local.
-- Editor de rutinas con añadir, quitar, configurar y reordenar ejercicios.
-- Constructor de rutinas en dos pasos: primero datos generales y después ejercicios, sin pesos.
-- Inicio de entrenamiento desde una rutina.
-- Registro de peso, repeticiones y series completadas.
-- Temporizador visual de descanso.
-- Historial real de sesiones y panel de progreso calculado desde los datos locales.
-- Biblioteca de ejercicios y creación de ejercicios personalizados.
+- CRUD de rutinas con varios días y persistencia remota en Supabase.
+- Caché local por usuario y cola de series pendientes si falla temporalmente la conexión.
+- Inicio de entrenamiento, registro de peso/repeticiones/series y temporizador de descanso.
+- Historial real de sesiones y panel de progreso.
+- Biblioteca de ejercicios con búsqueda, filtros por grupo muscular y ejercicios personalizados.
+- Registro de errores y panel protegido para administradores.
 - Responsive mobile-first y manifest PWA.
 
 ## Arranque
@@ -29,8 +27,12 @@ Después abre `http://localhost:4200`.
 La configuración real no se guarda en el repositorio. Copia
 `src/assets/supabase-config.example.json` como
 `src/assets/supabase-config.json` y completa la Project URL y la Publishable
-Key desde Supabase > Project Settings > API Keys. El archivo real está ignorado
-por Git.
+Key desde Supabase > Project Settings > API Keys. El archivo real está
+ignorado por Git.
+
+Aplica las migraciones de `supabase/migrations` en orden. La guía completa,
+incluido el alta del administrador y las comprobaciones RLS, está en
+[`supabase/SETUP.md`](supabase/SETUP.md).
 
 En GitHub Pages, crea los secretos del repositorio `SUPABASE_URL` y
 `SUPABASE_PUBLISHABLE_KEY`; el workflow genera el archivo durante el build.
@@ -38,16 +40,17 @@ Nunca uses la `service_role` o una secret key en Angular.
 
 ## Demo publicada
 
-La versión desplegada está disponible en [josejoaquin96.github.io/dracox-webapp](https://josejoaquin96.github.io/dracox-webapp/).
+La versión desplegada está disponible en
+[josejoaquin96.github.io/dracox-webapp](https://josejoaquin96.github.io/dracox-webapp/).
 
 ## Decisiones técnicas
 
 - Angular 21 con componentes standalone y rutas lazy.
 - Signals para el estado de la aplicación.
-- Supabase gestiona la autenticación y la persistencia de rutinas y entrenamientos.
-- `WorkoutStore` mantiene la integración remota y un fallback local para desarrollo.
-- Las políticas RLS limitan los datos de cada usuario y las claves privadas nunca llegan al cliente.
+- Supabase gestiona autenticación y persistencia de rutinas y entrenamientos.
+- `WorkoutStore` mantiene una caché local por usuario para tolerar cortes breves de red.
+- Las políticas RLS limitan los datos de cada usuario y los logs al panel administrador.
 
-## Próximo bloque recomendado
-
-El siguiente paso es ampliar el registro de entrenamientos y añadir validaciones y funcionalidades avanzadas de rutina.
+El flujo de autenticación sigue siendo deliberadamente mínimo: el usuario debe
+existir previamente en Supabase. El registro y la recuperación de contraseña
+quedan para una iteración posterior.

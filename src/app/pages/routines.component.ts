@@ -60,9 +60,9 @@ type BuilderStep = 'details' | 'exercises';
                 <div class="editor-exercise-row"><span class="drag-handle">::</span><span class="editor-exercise-number">{{ (index + 1).toString().padStart(2, '0') }}</span><div class="editor-exercise-name"><strong>{{ exerciseName(planned.exerciseId) }}</strong><small>{{ exerciseMeta(planned.exerciseId) }}</small></div><label class="mini-field"><span>Series</span><input type="number" min="1" max="20" [ngModel]="planned.sets" (ngModelChange)="updateExercise(index, { sets: toNumber($event, planned.sets) })"></label><label class="mini-field"><span>Reps</span><input [ngModel]="planned.repRange" (ngModelChange)="updateExercise(index, { repRange: $event })"></label><label class="mini-field rest-field"><span>Descanso</span><input type="number" min="0" step="15" [ngModel]="planned.restSeconds" (ngModelChange)="updateExercise(index, { restSeconds: toNumber($event, planned.restSeconds) })"><small>s</small></label><div class="editor-row-actions"><button class="row-icon" (click)="moveExercise(index, -1)" [disabled]="index === 0" aria-label="Subir ejercicio">^</button><button class="row-icon" (click)="moveExercise(index, 1)" [disabled]="index === formExercises().length - 1" aria-label="Bajar ejercicio">v</button><button class="row-icon danger" (click)="removeExercise(index)" aria-label="Eliminar ejercicio">x</button></div></div>
               } @empty { <div class="editor-empty"><span>+</span><strong>Tu rutina todavia esta vacia</strong><small>Selecciona un ejercicio debajo para anadirlo.</small></div> }
             </div>
-            <div class="add-exercise-row"><select [(ngModel)]="selectedExerciseId"><option value="">Selecciona un ejercicio...</option>@for (exercise of store.exercises(); track exercise.id) {<option [value]="exercise.id">{{ exercise.name }}</option>}</select><button class="button button-small button-primary" (click)="addSelectedExercise()" [disabled]="!selectedExerciseId">+ Anadir ejercicio</button></div>
+            <div class="add-exercise-row"><select [(ngModel)]="selectedExerciseId"><option value="">Selecciona un ejercicio...</option>@for (exercise of store.strengthExercises(); track exercise.id) {<option [value]="exercise.id">{{ exercise.name }}</option>}</select><button class="button button-small button-primary" (click)="addSelectedExercise()" [disabled]="!selectedExerciseId">+ Anadir ejercicio</button></div>
             <div class="modal-note"><span>*</span><p>El peso y las repeticiones reales se guardan al comenzar una sesion.</p></div>
-            <div class="modal-actions"><button class="button button-outline" (click)="builderStep.set('details')"><- Revisar datos</button><button class="button button-primary" (click)="saveRoutine()">Guardar rutina</button></div>
+            <div class="modal-actions"><button class="button button-outline" (click)="builderStep.set('details')"><- Revisar datos</button><button class="button button-primary" (click)="saveRoutine()" [disabled]="saving()">{{ saving() ? 'Guardando...' : 'Guardar rutina' }}</button></div>
           }
         </section>
       </div>
@@ -78,6 +78,7 @@ export class RoutinesComponent {
   readonly formRoutineDays = signal<RoutineDay[]>([]);
   readonly selectedDayIndex = signal(0);
   readonly showArchived = signal(false);
+  readonly saving = signal(false);
   readonly visibleRoutines = computed(() => this.showArchived() ? this.store.archivedRoutines() : this.store.activeRoutines());
 
   formName = '';
@@ -129,6 +130,8 @@ export class RoutinesComponent {
   }
 
   async saveRoutine(): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
     this.commitSelectedDay();
     const editing = this.editing();
     const input: RoutineDraft = {
@@ -145,6 +148,7 @@ export class RoutinesComponent {
     const saved = editing
       ? await this.store.updateRoutineProgram(editing.id, input)
       : await this.store.createRoutineProgram(input);
+    this.saving.set(false);
     if (saved) this.closeForm();
   }
 

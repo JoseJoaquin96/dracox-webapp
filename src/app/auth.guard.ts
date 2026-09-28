@@ -5,6 +5,8 @@ import { getSupabase } from './supabase.client';
 async function hasAuthenticatedUser(): Promise<boolean> {
   const client = getSupabase();
   if (!client) return false;
+  const { data: sessionData } = await client.auth.getSession();
+  if (sessionData.session) return true;
   const { data } = await client.auth.getUser();
   return data.user !== null;
 }

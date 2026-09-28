@@ -246,3 +246,24 @@ html, body { min-width: 320px; overflow-x: hidden; }
 .app-shell:has(.login-page) .main-content { width: 100%; margin-left: 0; padding-bottom: 0; }
 .app-shell:has(.login-page) .page-container { width: min(calc(100% - 32px), 430px); padding: 28px 0; }
 .app-shell:has(.login-page) .login-page { min-height: 100dvh; }
+
+.app-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 5.2vw; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+.app-status-loading { color: var(--lime); background: rgba(216,243,106,.04); }
+.app-status-error { color: var(--red); background: rgba(239,140,145,.07); }
+.app-status-pending { color: var(--orange); background: rgba(255,178,113,.05); }
+.app-status button { border: 0; background: transparent; color: inherit; font-size: 16px; line-height: 1; }
+.error-log-card { padding: 24px 25px 7px; }
+.error-log-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+.error-log-severity { flex: 0 0 auto; color: var(--red); font: 9px 'DM Mono', monospace; text-transform: uppercase; }
+.error-log-severity.warning { color: var(--orange); }
+.error-log-copy { min-width: 0; flex: 1; }
+.error-log-copy strong, .error-log-copy small, .error-log-copy code { display: block; }
+.error-log-copy strong { overflow-wrap: anywhere; font-size: 11px; }
+.error-log-copy small { margin-top: 5px; color: var(--muted-2); font-size: 9px; }
+.error-log-copy code { margin-top: 6px; overflow-x: auto; color: var(--muted-2); font: 9px 'DM Mono', monospace; white-space: pre-wrap; }
+
+@media (max-width: 760px) {
+  .app-status { padding: 10px 16px; }
+  .error-log-card { padding: 20px 17px 7px; }
+  .error-log-row { gap: 8px; }
+}
