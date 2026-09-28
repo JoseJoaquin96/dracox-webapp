@@ -3,17 +3,17 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "forge-workout": {
+    "dracox-workout": {
       "projectType": "application",
       "schematics": {},
       "root": "",
       "sourceRoot": "src",
-      "prefix": "forge",
+      "prefix": "dracox",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/forge-workout",
+            "outputPath": "dist/dracox-workout",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [],
@@ -44,8 +44,8 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "forge-workout:build:production" },
-            "development": { "buildTarget": "forge-workout:build:development" }
+            "production": { "buildTarget": "dracox-workout:build:production" },
+            "development": { "buildTarget": "dracox-workout:build:development" }
           },
           "defaultConfiguration": "development"
         }

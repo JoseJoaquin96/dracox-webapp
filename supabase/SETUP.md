@@ -1,6 +1,6 @@
 # Supabase setup
 
-This directory contains the versioned database schema for Forge. The Angular
+This directory contains the versioned database schema for Dracox. The Angular
 prototype uses Supabase for routines, sessions and workout records; it does not
 persist workout data in browser storage.
 
@@ -82,8 +82,10 @@ keep every routine and workout session scoped to its owner.
 2. In Authentication > Providers, enable Email.
 3. Enable email confirmations and password recovery.
 4. Add these allowed URLs in Authentication > URL Configuration:
-   - `http://localhost:4200`
-   - `https://josejoaquin96.github.io/dracox-webapp/`
+   - `http://localhost:4200/login`
+   - `http://localhost:4200/login?mode=reset`
+   - `https://josejoaquin96.github.io/dracox-webapp/login`
+   - `https://josejoaquin96.github.io/dracox-webapp/login?mode=reset`
    - The production Vercel URL when one exists.
 5. Apply `migrations/0001_initial_schema.sql` in the Supabase SQL Editor.
 6. Apply `migrations/0002_basic_workout_api.sql` in the Supabase SQL Editor.

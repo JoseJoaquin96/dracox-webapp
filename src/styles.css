@@ -247,6 +247,14 @@ html, body { min-width: 320px; overflow-x: hidden; }
 .app-shell:has(.login-page) .page-container { width: min(calc(100% - 32px), 430px); padding: 28px 0; }
 .app-shell:has(.login-page) .login-page { min-height: 100dvh; }
 
+.login-actions { display: flex; justify-content: flex-end; margin-top: 5px; }
+.auth-switch { margin: 17px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
+.login-link { padding: 0; border: 0; background: transparent; color: var(--lime); cursor: pointer; font: inherit; }
+.login-link:hover { text-decoration: underline; }
+.login-message { margin-bottom: 14px; }
+.login-success { color: var(--lime); background: rgba(216,243,106,.07); }
+.password-hint { display: block; margin: -5px 0 8px; color: var(--orange); font-size: 10px; }
+
 .app-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 5.2vw; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; }
 .app-status-loading { color: var(--lime); background: rgba(216,243,106,.04); }
 .app-status-error { color: var(--red); background: rgba(239,140,145,.07); }

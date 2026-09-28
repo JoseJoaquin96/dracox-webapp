@@ -3,15 +3,15 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { WorkoutStore } from './workout.store';
 
 @Component({
-  selector: 'forge-root',
+  selector: 'dracox-root',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="app-shell">
       <aside class="sidebar">
-        <a class="brand" routerLink="/" aria-label="Forge inicio">
-          <span class="brand-mark">F</span>
-          <span><strong>forge</strong><small>TRAINING OS</small></span>
+        <a class="brand" routerLink="/" aria-label="Dracox inicio">
+          <span class="brand-mark">D</span>
+          <span><strong>dracox</strong><small>TRAINING OS</small></span>
         </a>
 
         <div class="sidebar-label">Espacio personal</div>
@@ -31,7 +31,7 @@ import { WorkoutStore } from './workout.store';
 
       <main class="main-content">
         <header class="topbar">
-          <div class="mobile-brand"><span class="brand-mark">F</span><strong>forge</strong></div>
+          <div class="mobile-brand"><span class="brand-mark">D</span><strong>dracox</strong></div>
           <div class="topbar-actions">
             <span class="sync-pill"><i></i> {{ syncLabel() }}</span>
             <button class="avatar avatar-button" (click)="signOut()" aria-label="Cerrar sesión" title="Cerrar sesión">J</button>

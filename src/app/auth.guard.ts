@@ -18,7 +18,8 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     : router.createUrlTree(['/login'], { queryParams: { redirect: state.url } });
 };
 
-export const guestGuard: CanActivateFn = async () => {
+export const guestGuard: CanActivateFn = async (route) => {
   const router = inject(Router);
+  if (route.queryParamMap.get('mode') === 'reset') return true;
   return await hasAuthenticatedUser() ? router.createUrlTree(['/']) : true;
 };

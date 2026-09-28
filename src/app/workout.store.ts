@@ -86,8 +86,8 @@ type CacheSnapshot = {
   pendingSetUpdates: PendingSetUpdate[];
 };
 
-const CACHE_PREFIX = 'forge-workout-cache:';
-const PENDING_SET_KEY = 'forge-workout-pending-sets:';
+const CACHE_PREFIX = 'dracox-workout-cache:';
+const PENDING_SET_KEY = 'dracox-workout-pending-sets:';
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutStore {
@@ -136,6 +136,86 @@ export class WorkoutStore {
     this.authEmail.set(data.user?.email ?? email);
     await this.loadRemoteData();
     return this.remoteState() === 'ready';
+  }
+
+  async signUp(email: string, password: string): Promise<{ ok: boolean; needsConfirmation: boolean }> {
+    const client = getSupabase();
+    if (!client) {
+      this.remoteState.set('disabled');
+      this.remoteError.set('Supabase no está configurado.');
+      return { ok: false, needsConfirmation: false };
+    }
+
+    this.remoteState.set('loading');
+    this.remoteError.set(null);
+    const { data, error } = await client.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: this.authRedirect('login') }
+    });
+    if (error) {
+      this.remoteState.set('error');
+      this.remoteError.set('No se pudo crear la cuenta. Comprueba el correo y la contraseña.');
+      return { ok: false, needsConfirmation: false };
+    }
+
+    if (data.session && data.user) {
+      this.authUserId.set(data.user.id);
+      this.authEmail.set(data.user.email ?? email);
+      await this.loadRemoteData();
+    } else {
+      this.remoteState.set('signed-out');
+    }
+    return { ok: true, needsConfirmation: !data.session };
+  }
+
+  async requestPasswordReset(email: string): Promise<boolean> {
+    const client = getSupabase();
+    if (!client) {
+      this.remoteState.set('disabled');
+      this.remoteError.set('Supabase no está configurado.');
+      return false;
+    }
+
+    this.remoteState.set('loading');
+    this.remoteError.set(null);
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: this.authRedirect('login?mode=reset')
+    });
+    if (error) {
+      this.remoteState.set('error');
+      this.remoteError.set('No se pudo iniciar la recuperación. Inténtalo de nuevo.');
+      return false;
+    }
+    this.remoteState.set('signed-out');
+    return true;
+  }
+
+  async updatePassword(password: string): Promise<boolean> {
+    const client = getSupabase();
+    if (!client) {
+      this.remoteState.set('disabled');
+      this.remoteError.set('Supabase no está configurado.');
+      return false;
+    }
+
+    this.remoteState.set('loading');
+    this.remoteError.set(null);
+    const { data: userData, error: userError } = await client.auth.getUser();
+    if (userError || !userData.user) {
+      this.remoteState.set('error');
+      this.remoteError.set('El enlace de recuperación no es válido o ha caducado.');
+      return false;
+    }
+
+    const { error } = await client.auth.updateUser({ password });
+    if (error) {
+      this.remoteState.set('error');
+      this.remoteError.set('No se pudo actualizar la contraseña.');
+      return false;
+    }
+    this.remoteState.set('ready');
+    return true;
   }
 
   async signOut(): Promise<void> {
@@ -457,6 +537,10 @@ export class WorkoutStore {
       pendingSetUpdates: this.pendingSetUpdates()
     };
     try { localStorage.setItem(key, JSON.stringify(cache)); } catch { /* Storage may be unavailable or full. */ }
+  }
+
+  private authRedirect(path: string): string {
+    return typeof document === 'undefined' ? path : new URL(path, document.baseURI).toString();
   }
 
   exerciseById(id: string): Exercise | undefined {

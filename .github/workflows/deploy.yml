@@ -40,7 +40,7 @@ jobs:
       - name: Build Angular app
         run: |
           npm run build -- --base-href "/dracox-webapp/"
-          cp dist/forge-workout/browser/index.html dist/forge-workout/browser/404.html
+          cp dist/dracox-workout/browser/index.html dist/dracox-workout/browser/404.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -48,7 +48,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/forge-workout/browser
+          path: dist/dracox-workout/browser
 
   deploy:
     environment:

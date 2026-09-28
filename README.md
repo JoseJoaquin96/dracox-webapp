@@ -1,4 +1,4 @@
-# Forge · Training OS
+# Dracox · Training OS
 
 Primera versión de una aplicación personal para planificar y registrar entrenamientos de gimnasio.
 
@@ -11,6 +11,7 @@ Primera versión de una aplicación personal para planificar y registrar entrena
 - Historial real de sesiones y panel de progreso.
 - Biblioteca de ejercicios con búsqueda, filtros por grupo muscular y ejercicios personalizados.
 - Registro de errores y panel protegido para administradores.
+- Registro, login y recuperación de contraseña mediante email en Supabase.
 - Responsive mobile-first y manifest PWA.
 
 ## Arranque
@@ -51,6 +52,6 @@ La versión desplegada está disponible en
 - `WorkoutStore` mantiene una caché local por usuario para tolerar cortes breves de red.
 - Las políticas RLS limitan los datos de cada usuario y los logs al panel administrador.
 
-El flujo de autenticación sigue siendo deliberadamente mínimo: el usuario debe
-existir previamente en Supabase. El registro y la recuperación de contraseña
-quedan para una iteración posterior.
+El flujo de autenticación usa email y contraseña con confirmación por correo y
+recuperación mediante enlace de un solo uso. Configura las URL de redirección
+permitidas en Supabase antes de probarlo.
