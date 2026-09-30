@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './auth.guard';
+import { adminGuard, authGuard, guestGuard } from './auth.guard';
 
 export const routes: Routes = [
   {
@@ -38,7 +38,7 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/exercises.component').then((module) => module.ExercisesComponent)
   },
   {
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
     path: 'admin/errors',
     loadComponent: () => import('./pages/admin-errors.component').then((module) => module.AdminErrorsComponent)
   },

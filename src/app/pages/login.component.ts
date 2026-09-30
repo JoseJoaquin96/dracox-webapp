@@ -31,6 +31,7 @@ type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
             </form>
           } @else if (mode() === 'register') {
             <form (ngSubmit)="register()">
+              <label class="field-label">Nombre<input type="text" name="displayName" [(ngModel)]="displayName" autocomplete="given-name" maxlength="60"></label>
               <label class="field-label">Email<input type="email" name="email" [(ngModel)]="email" autocomplete="email" required></label>
               <label class="field-label">Contraseña<input type="password" name="password" [(ngModel)]="password" autocomplete="new-password" minlength="8" required></label>
               <label class="field-label">Repite la contraseña<input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" autocomplete="new-password" minlength="8" required></label>
@@ -69,6 +70,7 @@ export class LoginComponent {
   readonly error = signal<string | null>(null);
   readonly success = signal<string | null>(null);
   email = '';
+  displayName = '';
   password = '';
   confirmPassword = '';
 
@@ -110,7 +112,7 @@ export class LoginComponent {
     this.busy.set(true);
     this.error.set(null);
     this.success.set(null);
-    const result = await this.store.signUp(this.email.trim(), this.password);
+    const result = await this.store.signUp(this.email.trim(), this.password, this.displayName);
     this.busy.set(false);
     if (!result.ok) {
       this.error.set(this.store.remoteError() ?? 'No se pudo crear la cuenta.');

@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { WorkoutStore } from './workout.store';
 
@@ -24,7 +24,7 @@ import { WorkoutStore } from './workout.store';
         </nav>
 
         <div class="sidebar-bottom">
-          <div class="mini-profile"><span class="avatar">J</span><span><strong>José</strong><small>Modo personal</small></span><span class="status-dot"></span></div>
+          <div class="mini-profile"><span class="avatar">{{ store.userInitial() }}</span><span><strong>{{ store.userName() }}</strong><small>Modo personal</small></span><span class="status-dot"></span></div>
           <div class="sidebar-tip"><span class="tip-icon">✳</span><span><strong>Tu progreso, tu ritmo</strong><small>La constancia gana.</small></span></div>
         </div>
       </aside>
@@ -34,7 +34,7 @@ import { WorkoutStore } from './workout.store';
           <div class="mobile-brand"><span class="brand-mark">D</span><strong>dracox</strong></div>
           <div class="topbar-actions">
             <span class="sync-pill"><i></i> {{ syncLabel() }}</span>
-            <button class="avatar avatar-button" (click)="signOut()" aria-label="Cerrar sesión" title="Cerrar sesión">J</button>
+            <button class="avatar avatar-button" (click)="signOut()" aria-label="Cerrar sesión" title="Cerrar sesión">{{ store.userInitial() }}</button>
           </div>
         </header>
         @if (store.remoteState() === 'loading') { <div class="app-status app-status-loading" role="status">Sincronizando datos…</div> }
@@ -56,7 +56,6 @@ import { WorkoutStore } from './workout.store';
 export class AppComponent {
   readonly store = inject(WorkoutStore);
   private readonly router = inject(Router);
-  readonly routineCount = computed(() => this.store.activeRoutines().length);
   readonly syncLabel = computed(() => {
     if (this.store.pendingWrites() > 0) return 'Pendiente de sincronizar';
     if (this.store.remoteState() === 'loading') return 'Sincronizando';
@@ -69,6 +68,14 @@ export class AppComponent {
     window.addEventListener('online', this.retryPendingWrites);
     window.addEventListener('error', this.captureWindowError);
     window.addEventListener('unhandledrejection', this.captureRejectedPromise);
+
+    // Session expired or closed in another tab.
+    let wasAuthenticated = false;
+    effect(() => {
+      const authenticated = this.store.isAuthenticated();
+      if (wasAuthenticated && !authenticated) void this.router.navigateByUrl('/login');
+      wasAuthenticated = authenticated;
+    });
   }
 
   private readonly retryPendingWrites = (): void => { void this.store.retryPendingWrites(); };
@@ -85,6 +92,8 @@ export class AppComponent {
   };
 
   async signOut(): Promise<void> {
+    const pending = this.store.pendingWrites();
+    if (pending > 0 && !window.confirm(`Tienes ${pending} cambio${pending === 1 ? '' : 's'} sin sincronizar que se perderán. ¿Cerrar sesión igualmente?`)) return;
     await this.store.signOut();
     await this.router.navigateByUrl('/login');
   }

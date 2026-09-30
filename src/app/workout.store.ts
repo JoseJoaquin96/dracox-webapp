@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { AppErrorLog, Exercise, Routine, RoutineDay, RoutineExercise, SessionExercise, WorkoutSession } from './models';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import { AppErrorLog, Exercise, ExerciseKind, Routine, RoutineDay, RoutineExercise, WorkoutSession, WorkoutSet } from './models';
 import { getSupabase, isSupabaseConfigured } from './supabase.client';
 
 export type RoutineDraft = {
@@ -86,8 +87,10 @@ type CacheSnapshot = {
   pendingSetUpdates: PendingSetUpdate[];
 };
 
+type ScheduledSetWrite = { sessionExerciseId: string; timer: ReturnType<typeof setTimeout> };
+
 const CACHE_PREFIX = 'dracox-workout-cache:';
-const PENDING_SET_KEY = 'dracox-workout-pending-sets:';
+const SET_WRITE_DEBOUNCE_MS = 600;
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutStore {
@@ -99,18 +102,46 @@ export class WorkoutStore {
   readonly remoteError = signal<string | null>(null);
   readonly authEmail = signal<string | null>(null);
   readonly authUserId = signal<string | null>(null);
+  readonly displayName = signal<string | null>(null);
   readonly isAdmin = signal(false);
   readonly errorLogs = signal<AppErrorLog[]>([]);
   readonly pendingSetUpdates = signal<PendingSetUpdate[]>([]);
   readonly pendingWrites = computed(() => this.pendingSetUpdates().length);
   readonly isAuthenticated = computed(() => this.authEmail() !== null);
+  readonly userName = computed(() => this.displayName() ?? this.authEmail()?.split('@')[0] ?? 'Atleta');
+  readonly userInitial = computed(() => this.userName().charAt(0).toUpperCase());
   readonly activeRoutines = computed(() => this.routines().filter((routine) => !routine.archivedAt));
   readonly archivedRoutines = computed(() => this.routines().filter((routine) => Boolean(routine.archivedAt)));
-  readonly strengthExercises = computed(() => this.exercises().filter((exercise) => exercise.kind === 'strength'));
+  private readonly exerciseMap = computed(() => new Map(this.exercises().map((exercise) => [exercise.id, exercise])));
   private readonly initialLoad: Promise<void>;
+  private readonly setWriteTimers = new Map<string, ScheduledSetWrite>();
+  private readonly setWriteQueue = new Map<string, Promise<void>>();
+  // Bumped on every local edit so late server responses never overwrite newer values.
+  private readonly setVersions = new Map<string, number>();
 
   constructor() {
     this.initialLoad = this.refreshFromSupabase();
+    getSupabase()?.auth.onAuthStateChange((event, session) => {
+      // Deferred: awaiting Supabase calls inside this callback can deadlock the auth client.
+      setTimeout(() => this.handleAuthChange(event, session), 0);
+    });
+  }
+
+  private handleAuthChange(event: AuthChangeEvent, session: Session | null): void {
+    const currentUserId = this.authUserId();
+    if (event === 'SIGNED_OUT') {
+      if (currentUserId) this.resetState();
+      return;
+    }
+    if (!session || !currentUserId) return;
+    if (session.user.id !== currentUserId) {
+      this.resetState();
+      this.authUserId.set(session.user.id);
+      this.authEmail.set(session.user.email ?? null);
+      void this.loadRemoteData();
+      return;
+    }
+    this.authEmail.set(session.user.email ?? null);
   }
 
   async waitUntilReady(): Promise<void> { await this.initialLoad; }
@@ -138,7 +169,7 @@ export class WorkoutStore {
     return this.remoteState() === 'ready';
   }
 
-  async signUp(email: string, password: string): Promise<{ ok: boolean; needsConfirmation: boolean }> {
+  async signUp(email: string, password: string, displayName = ''): Promise<{ ok: boolean; needsConfirmation: boolean }> {
     const client = getSupabase();
     if (!client) {
       this.remoteState.set('disabled');
@@ -151,7 +182,10 @@ export class WorkoutStore {
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: this.authRedirect('login') }
+      options: {
+        emailRedirectTo: this.authRedirect('login'),
+        data: displayName.trim() ? { display_name: displayName.trim().slice(0, 60) } : undefined
+      }
     });
     if (error) {
       this.remoteState.set('error');
@@ -219,10 +253,20 @@ export class WorkoutStore {
   }
 
   async signOut(): Promise<void> {
+    const cacheKey = this.cacheKey();
     const client = getSupabase();
     if (client) await client.auth.signOut();
+    this.clearCache(cacheKey);
+    this.resetState();
+  }
+
+  private resetState(): void {
+    this.setWriteTimers.forEach(({ timer }) => clearTimeout(timer));
+    this.setWriteTimers.clear();
+    this.setVersions.clear();
     this.authEmail.set(null);
     this.authUserId.set(null);
+    this.displayName.set(null);
     this.isAdmin.set(false);
     this.errorLogs.set([]);
     this.pendingSetUpdates.set([]);
@@ -254,11 +298,13 @@ export class WorkoutStore {
   private async loadRemoteData(): Promise<void> {
     this.remoteState.set('loading');
     const hasCache = this.hydrateCache();
-    await this.loadRemoteProfile();
-    await this.loadRemoteExercises();
-    await this.loadRemoteRoutines();
-    await this.loadRemoteHistory();
-    await this.loadRemoteActiveSession();
+    await Promise.all([
+      this.loadRemoteProfile(),
+      this.loadRemoteExercises(),
+      this.loadRemoteRoutines(),
+      this.loadRemoteHistory(),
+      this.loadRemoteActiveSession()
+    ]);
     await this.retryPendingWrites();
     this.persistCache();
     if (this.remoteState() !== 'error') this.remoteState.set('ready');
@@ -268,13 +314,15 @@ export class WorkoutStore {
   private async loadRemoteProfile(): Promise<void> {
     const client = getSupabase();
     if (!client || !this.authUserId()) return;
-    const { data, error } = await client.from('profiles').select('is_admin').eq('id', this.authUserId()).maybeSingle();
+    const { data, error } = await client.from('profiles').select('is_admin, display_name').eq('id', this.authUserId()).maybeSingle();
     if (error) {
       // The admin migration is optional for the core workout loop.
       this.isAdmin.set(false);
       return;
     }
-    this.isAdmin.set(Boolean((data as { is_admin?: boolean } | null)?.is_admin));
+    const profile = data as { is_admin?: boolean; display_name?: string | null } | null;
+    this.isAdmin.set(Boolean(profile?.is_admin));
+    this.displayName.set(profile?.display_name?.trim() || null);
   }
 
   private async loadRemoteExercises(): Promise<void> {
@@ -422,14 +470,18 @@ export class WorkoutStore {
     const client = getSupabase();
     const userId = this.authUserId();
     if (!client || !userId) return;
-    await client.from('app_error_logs').insert({
-      user_id: userId,
-      severity: 'error',
-      source,
-      message: message.slice(0, 2000),
-      route: typeof location === 'undefined' ? null : location.pathname,
-      details
-    });
+    try {
+      await client.from('app_error_logs').insert({
+        user_id: userId,
+        severity: 'error',
+        source: source.slice(0, 100),
+        message: message.slice(0, 2000),
+        route: typeof location === 'undefined' ? null : location.pathname.slice(0, 500),
+        details
+      });
+    } catch {
+      // Logging must never raise new errors, or window handlers would loop.
+    }
   }
 
   async loadAdminErrorLogs(): Promise<boolean> {
@@ -458,30 +510,15 @@ export class WorkoutStore {
   }
 
   async retryPendingWrites(): Promise<void> {
-    const client = getSupabase();
     const session = this.activeSession();
-    if (!client || !session || !this.pendingSetUpdates().length) return;
-    const remaining: PendingSetUpdate[] = [];
-    for (const update of this.pendingSetUpdates()) {
-      if (update.sessionId !== session.id) {
-        remaining.push(update);
-        continue;
-      }
-      const { data, error } = await client.rpc('update_workout_set', {
-        p_set_id: update.setId,
-        p_weight: update.weight,
-        p_reps: update.reps,
-        p_completed: update.completed
-      });
-      if (error) {
-        remaining.push(update);
-        continue;
-      }
-      this.applySavedSet(update.sessionExerciseId, update.setId, data as RemoteWorkoutSet);
-    }
-    this.pendingSetUpdates.set(remaining);
+    if (!getSupabase() || !session || !this.pendingSetUpdates().length) return;
+    // Sets with a scheduled write will send their latest local values anyway.
+    const updates = this.pendingSetUpdates().filter((update) => update.sessionId === session.id && !this.setWriteTimers.has(update.setId));
+    await Promise.all(updates.map((update) => this.runSetWrite(update.setId, async () => {
+      if (this.pendingSetUpdates().includes(update)) await this.sendSetUpdate(update);
+    })));
     this.persistCache();
-    if (!remaining.length) this.clearRemoteError();
+    if (!this.pendingSetUpdates().length) this.clearRemoteError();
   }
 
   private applySavedSet(sessionExerciseId: string, setId: string, saved: RemoteWorkoutSet): void {
@@ -526,6 +563,11 @@ export class WorkoutStore {
     }
   }
 
+  private clearCache(key: string | null): void {
+    if (!key || typeof localStorage === 'undefined') return;
+    try { localStorage.removeItem(key); } catch { /* Storage may be unavailable. */ }
+  }
+
   private persistCache(): void {
     const key = this.cacheKey();
     if (!key || typeof localStorage === 'undefined') return;
@@ -544,7 +586,7 @@ export class WorkoutStore {
   }
 
   exerciseById(id: string): Exercise | undefined {
-    return this.exercises().find((exercise) => exercise.id === id);
+    return this.exerciseMap().get(id);
   }
 
   routineById(id: string): Routine | undefined {
@@ -581,52 +623,42 @@ export class WorkoutStore {
     return session;
   }
 
-  async updateSet(
+  updateSet(
     sessionExerciseId: string,
     setId: string,
     values: { weight?: number | null; reps?: number | null }
-  ): Promise<void> {
-    const session = this.activeSession();
-    const currentSet = session?.exercises.find((exercise) => exercise.id === sessionExerciseId)?.sets.find((set) => set.id === setId);
-    const client = getSupabase();
-    if (!session || !currentSet || !client) return;
-
-    await this.persistSet(client, sessionExerciseId, setId, {
+  ): void {
+    const currentSet = this.findSet(sessionExerciseId, setId);
+    if (!currentSet) return;
+    this.applyLocalSet(sessionExerciseId, setId, {
       weight: values.weight === undefined ? currentSet.weight : values.weight,
       reps: values.reps === undefined ? currentSet.reps : values.reps,
       completed: currentSet.completed
     });
+    this.scheduleSetWrite(sessionExerciseId, setId, SET_WRITE_DEBOUNCE_MS);
   }
 
-  async toggleSet(sessionExerciseId: string, setId: string): Promise<void> {
-    const session = this.activeSession();
-    const currentSet = session?.exercises.find((exercise) => exercise.id === sessionExerciseId)?.sets.find((set) => set.id === setId);
-    const client = getSupabase();
-    if (!session || !currentSet || !client) return;
-
-    await this.persistSet(client, sessionExerciseId, setId, {
+  toggleSet(sessionExerciseId: string, setId: string): void {
+    const currentSet = this.findSet(sessionExerciseId, setId);
+    if (!currentSet) return;
+    this.applyLocalSet(sessionExerciseId, setId, {
       weight: currentSet.weight,
       reps: currentSet.reps,
       completed: !currentSet.completed
     });
+    this.scheduleSetWrite(sessionExerciseId, setId, 0);
   }
 
-  private async persistSet(
-    client: NonNullable<ReturnType<typeof getSupabase>>,
+  private findSet(sessionExerciseId: string, setId: string): WorkoutSet | undefined {
+    return this.activeSession()?.exercises.find((exercise) => exercise.id === sessionExerciseId)?.sets.find((set) => set.id === setId);
+  }
+
+  private applyLocalSet(
     sessionExerciseId: string,
     setId: string,
     values: { weight: number | null; reps: number | null; completed: boolean }
-  ): Promise<void> {
-    const session = this.activeSession();
-    if (!session) return;
-    const pending: PendingSetUpdate = {
-      sessionId: session.id,
-      sessionExerciseId,
-      setId,
-      weight: values.weight,
-      reps: values.reps,
-      completed: values.completed
-    };
+  ): void {
+    this.setVersions.set(setId, (this.setVersions.get(setId) ?? 0) + 1);
     this.activeSession.update((current) => current ? {
       ...current,
       exercises: current.exercises.map((exercise) => exercise.id !== sessionExerciseId ? exercise : {
@@ -634,22 +666,79 @@ export class WorkoutStore {
         sets: exercise.sets.map((set) => set.id !== setId ? set : { ...set, ...values })
       })
     } : current);
-    this.persistCache();
-    const { data, error } = await client.rpc('update_workout_set', {
-      p_set_id: setId,
-      p_weight: values.weight,
-      p_reps: values.reps,
-      p_completed: values.completed
-    });
-    if (error) {
-      this.queueSetUpdate(pending);
-      this.fail(error.message, 'workout-set');
-      return;
+    // Keep queued offline updates in sync so a retry never sends stale values.
+    if (this.pendingSetUpdates().some((item) => item.setId === setId)) {
+      this.pendingSetUpdates.update((updates) => updates.map((item) => item.setId === setId ? { ...item, ...values } : item));
     }
-
-    this.applySavedSet(sessionExerciseId, setId, data as RemoteWorkoutSet);
-    this.pendingSetUpdates.update((updates) => updates.filter((item) => item.setId !== setId));
     this.persistCache();
+  }
+
+  private scheduleSetWrite(sessionExerciseId: string, setId: string, delayMs: number): void {
+    const scheduled = this.setWriteTimers.get(setId);
+    if (scheduled) clearTimeout(scheduled.timer);
+    const timer = setTimeout(() => {
+      this.setWriteTimers.delete(setId);
+      void this.runSetWrite(setId, () => this.writeLocalSet(sessionExerciseId, setId));
+    }, delayMs);
+    this.setWriteTimers.set(setId, { sessionExerciseId, timer });
+  }
+
+  private async flushSetWrites(): Promise<void> {
+    const scheduled = [...this.setWriteTimers.entries()];
+    this.setWriteTimers.clear();
+    scheduled.forEach(([setId, { sessionExerciseId, timer }]) => {
+      clearTimeout(timer);
+      void this.runSetWrite(setId, () => this.writeLocalSet(sessionExerciseId, setId));
+    });
+    await Promise.all(this.setWriteQueue.values());
+  }
+
+  // Writes for the same set run one after another so the server keeps the last value.
+  private runSetWrite(setId: string, task: () => Promise<void>): Promise<void> {
+    const next = (this.setWriteQueue.get(setId) ?? Promise.resolve()).then(task).catch(() => undefined);
+    this.setWriteQueue.set(setId, next);
+    void next.then(() => {
+      if (this.setWriteQueue.get(setId) === next) this.setWriteQueue.delete(setId);
+    });
+    return next;
+  }
+
+  private async writeLocalSet(sessionExerciseId: string, setId: string): Promise<void> {
+    const session = this.activeSession();
+    const currentSet = this.findSet(sessionExerciseId, setId);
+    if (!session || !currentSet) return;
+    const error = await this.sendSetUpdate({
+      sessionId: session.id,
+      sessionExerciseId,
+      setId,
+      weight: currentSet.weight,
+      reps: currentSet.reps,
+      completed: currentSet.completed
+    });
+    if (error) this.fail(error, 'workout-set');
+  }
+
+  private async sendSetUpdate(update: PendingSetUpdate): Promise<string | null> {
+    const client = getSupabase();
+    if (!client) return null;
+    const version = this.setVersions.get(update.setId) ?? 0;
+    const { data, error } = await client.rpc('update_workout_set', {
+      p_set_id: update.setId,
+      p_weight: update.weight,
+      p_reps: update.reps,
+      p_completed: update.completed
+    });
+    const isLatest = (this.setVersions.get(update.setId) ?? 0) === version;
+    if (error) {
+      if (isLatest) this.queueSetUpdate(update);
+      return error.message;
+    }
+    if (isLatest) {
+      this.applySavedSet(update.sessionExerciseId, update.setId, data as RemoteWorkoutSet);
+      this.pendingSetUpdates.update((updates) => updates.filter((item) => item.setId !== update.setId));
+    }
+    this.persistCache();
+    return null;
   }
 
   async addSet(sessionExerciseId: string): Promise<void> {
@@ -682,6 +771,7 @@ export class WorkoutStore {
   async saveWorkout(): Promise<boolean> {
     const session = this.activeSession();
     if (!session) return false;
+    await this.flushSetWrites();
     await this.retryPendingWrites();
     const saved = await this.loadRemoteActiveSession(session.id);
     if (saved) this.remoteState.set('ready');
@@ -693,6 +783,7 @@ export class WorkoutStore {
     const session = this.activeSession();
     const client = getSupabase();
     if (!session || !client) return false;
+    await this.flushSetWrites();
     await this.retryPendingWrites();
     if (this.pendingSetUpdates().length) {
       this.fail('Hay cambios pendientes de sincronizar. Recupera la conexión e inténtalo de nuevo.', 'finish-workout');
@@ -751,6 +842,7 @@ export class WorkoutStore {
       p_duration: input.duration,
       p_color: input.color,
       p_days: input.routineDays.map((day) => ({
+        id: day.id ?? null,
         name: day.name,
         exercises: day.exercises.map((exercise) => ({
           exercise_id: exercise.exerciseId,
@@ -793,7 +885,7 @@ export class WorkoutStore {
     return true;
   }
 
-  async addExercise(name: string, muscle: string, equipment: string): Promise<boolean> {
+  async addExercise(name: string, muscle: string, equipment: string, kind: ExerciseKind = 'strength'): Promise<boolean> {
     const client = getSupabase();
     this.remoteState.set('loading');
     if (!client) {
@@ -805,14 +897,14 @@ export class WorkoutStore {
       this.fail('Inicia sesión para crear ejercicios.');
       return false;
     }
-    const initials = name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase();
+    const initials = name.split(/\s+/).filter(Boolean).map((word) => word[0]).join('').slice(0, 2).toUpperCase();
     const { error } = await client.from('exercises').insert({
       owner_id: user.user.id,
       name,
       muscle: muscle || 'General',
       secondary: '',
       equipment: equipment || 'Libre',
-      kind: 'strength',
+      kind,
       initials,
       color: '#d8f36a'
     });
@@ -821,6 +913,7 @@ export class WorkoutStore {
       return false;
     }
     await this.loadRemoteExercises();
+    if (this.remoteState() !== 'error') this.remoteState.set('ready');
     return true;
   }
 
