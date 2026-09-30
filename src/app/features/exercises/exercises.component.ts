@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ExerciseDraft, ExerciseKind } from '../../domain/models';
+import { Exercise, ExerciseDraft, ExerciseKind } from '../../domain/models';
 import { ModalComponent } from '../../shared/modal.component';
 import { ExerciseStore } from '../../state/exercise.store';
 
@@ -34,17 +34,30 @@ export class ExercisesComponent {
       `${exercise.name} ${exercise.muscle} ${exercise.equipment}`.toLowerCase().includes(query));
   });
   readonly formOpen = signal(false);
+  /** Exercise being edited; null while creating a new one. */
+  readonly editing = signal<Exercise | null>(null);
   readonly saving = signal(false);
   draft = emptyDraft();
 
-  async create(): Promise<void> {
+  openForm(exercise: Exercise | null = null): void {
+    this.editing.set(exercise);
+    this.draft = exercise
+      ? { name: exercise.name, muscle: exercise.muscle, equipment: exercise.equipment, kind: exercise.kind }
+      : emptyDraft();
+    this.formOpen.set(true);
+  }
+
+  async save(): Promise<void> {
     const draft = { ...this.draft, name: this.draft.name.trim(), muscle: this.draft.muscle.trim(), equipment: this.draft.equipment.trim() };
     if (!draft.name || this.saving()) return;
     this.saving.set(true);
-    const saved = await this.exercises.create(draft);
+    const editing = this.editing();
+    const saved = editing ? await this.exercises.update(editing.id, draft) : await this.exercises.create(draft);
     this.saving.set(false);
-    if (!saved) return;
-    this.draft = emptyDraft();
-    this.formOpen.set(false);
+    if (saved) this.formOpen.set(false);
+  }
+
+  remove(exercise: Exercise): void {
+    if (window.confirm(`¿Borrar el ejercicio "${exercise.name}"?`)) void this.exercises.remove(exercise.id);
   }
 }

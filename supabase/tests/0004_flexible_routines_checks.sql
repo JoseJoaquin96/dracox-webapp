@@ -1,5 +1,6 @@
 -- Run after 0004_flexible_routines.sql.
 -- get_my_routine_days is removed by 0009 and checked there.
+-- get_my_workout_history privileges are checked in 0010, which changes its signature.
 
 do $$
 declare
@@ -81,14 +82,6 @@ begin
       and cmd = 'DELETE'
   ) then
     raise exception 'Routines must not expose a DELETE policy';
-  end if;
-
-  if has_function_privilege(
-    'anon',
-    'public.get_my_workout_history(uuid)',
-    'execute'
-  ) then
-    raise exception 'Anonymous users must not execute get_my_workout_history';
   end if;
 end;
 $$;

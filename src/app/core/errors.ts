@@ -18,7 +18,7 @@ export function isOffline(error: unknown): boolean {
 
 export function toUserMessage(error: unknown): string {
   if (error instanceof AppError) return error.message;
-  if (isOffline(error)) return 'Sin conexión. Se muestran los últimos datos guardados.';
+  if (isOffline(error)) return 'Sin conexión. Inténtalo de nuevo cuando vuelvas a tener red.';
   if (error instanceof RemoteError && error.code === '42501') return 'No tienes permiso para realizar esta acción.';
   if (error instanceof RemoteError && error.code === '22023') return 'Los datos introducidos no son válidos.';
   return 'Ha ocurrido un error. Inténtalo de nuevo.';

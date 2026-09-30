@@ -1,8 +1,9 @@
 import { Injectable, effect, inject, untracked } from '@angular/core';
 import { AuthStore } from '../core/auth/auth.store';
-import { readCache, removeCache, writeCache } from '../core/local-cache';
+import { CacheSnapshot, readCache, removeCache, removeLegacyCache, writeCache } from '../core/local-cache';
 import { ExerciseStore } from './exercise.store';
 import { HistoryStore } from './history.store';
+import { ProgressStore } from './progress.store';
 import { RoutineStore } from './routine.store';
 import { WorkoutStore } from './workout.store';
 
@@ -16,27 +17,40 @@ export class DataSync {
   private readonly exercises = inject(ExerciseStore);
   private readonly routines = inject(RoutineStore);
   private readonly history = inject(HistoryStore);
+  private readonly progress = inject(ProgressStore);
   private readonly workout = inject(WorkoutStore);
   private cachedUserId: string | null = null;
 
   constructor() {
+    removeLegacyCache();
+
     effect(() => {
       const userId = this.auth.userId();
       untracked(() => this.switchUser(userId));
     });
 
     effect(() => {
-      const snapshot = {
-        exercises: this.exercises.all(),
-        routines: this.routines.all(),
-        history: this.history.sessions(),
-        activeSession: this.workout.active(),
-        pendingSetUpdates: this.workout.pendingUpdates()
-      };
+      const snapshot = this.snapshot();
       if (this.cachedUserId) writeCache(this.cachedUserId, snapshot);
     });
 
-    window.addEventListener('online', () => void this.workout.retryPending());
+    window.addEventListener('online', () => void this.workout.sync());
+    // The page may be closed right after this, so the cache is written synchronously.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'hidden' || !this.cachedUserId) return;
+      this.workout.saveBeforeLeaving();
+      writeCache(this.cachedUserId, this.snapshot());
+    });
+  }
+
+  private snapshot(): CacheSnapshot {
+    return {
+      exercises: this.exercises.all(),
+      routines: this.routines.all(),
+      history: this.history.sessions(),
+      progress: this.progress.summary(),
+      workout: this.workout.snapshot()
+    };
   }
 
   private switchUser(userId: string | null): void {
@@ -49,15 +63,11 @@ export class DataSync {
     this.exercises.restore(cache.exercises ?? []);
     this.routines.restore(cache.routines ?? []);
     this.history.restore(cache.history ?? []);
-    this.workout.restore(cache.activeSession ?? null, cache.pendingSetUpdates ?? []);
+    this.progress.restore(cache.progress);
+    this.workout.restore(cache.workout ?? {});
 
     if (!userId) return;
     this.cachedUserId = userId;
-    void this.reload();
-  }
-
-  private async reload(): Promise<void> {
-    await Promise.all([this.exercises.load(), this.routines.load(), this.history.load(), this.workout.load()]);
-    await this.workout.retryPending();
+    void Promise.all([this.exercises.load(), this.routines.load(), this.history.load(), this.progress.load(), this.workout.load()]);
   }
 }

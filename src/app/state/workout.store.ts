@@ -1,45 +1,76 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { AppError } from '../core/errors';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { AppError, isOffline } from '../core/errors';
 import { SyncStatus } from '../core/sync-status';
 import { WorkoutApi } from '../data/workout.api';
-import { PendingSetUpdate, SetValues, WorkoutSession, WorkoutSet } from '../domain/models';
+import { LocalSet, PendingSetUpdate, SetValues, WorkoutSession, WorkoutSet, WorkoutSnapshot } from '../domain/models';
 import { HistoryStore } from './history.store';
+import { ProgressStore } from './progress.store';
 import { RoutineStore } from './routine.store';
 
 const TYPING_DEBOUNCE_MS = 600;
+const LOCAL_ID_PREFIX = 'local-';
 
 /**
- * The workout in progress. Set changes are applied locally at once and saved in the
- * background: debounced while typing, one request at a time per set, and kept in
- * `pendingUpdates` when they fail so they can be retried later.
+ * The workout in progress. It keeps working offline:
+ * - set values are applied locally at once and saved in the background (debounced while
+ *   typing, one request at a time per set); failed saves wait in `pending`;
+ * - sets added offline get a local id until the server creates them;
+ * - finishing offline is queued and sent once everything else is saved.
  */
 @Injectable({ providedIn: 'root' })
 export class WorkoutStore {
   private readonly api = inject(WorkoutApi);
   private readonly status = inject(SyncStatus);
   private readonly history = inject(HistoryStore);
+  private readonly progress = inject(ProgressStore);
   private readonly routines = inject(RoutineStore);
+
   private readonly session = signal<WorkoutSession | null>(null);
   private readonly pending = signal<PendingSetUpdate[]>([]);
-  readonly active = this.session.asReadonly();
-  readonly pendingUpdates = this.pending.asReadonly();
+  private readonly localSets = signal<LocalSet[]>([]);
+  private readonly finishQueued = signal<string | null>(null);
+  /** The workout in progress; hidden once finished, even while the finish waits to be sent. */
+  readonly active = computed(() => {
+    const session = this.session();
+    return session && session.id !== this.finishQueued() ? session : null;
+  });
+  readonly unsyncedCount = computed(() => this.pending().length + this.localSets().length + (this.finishQueued() ? 1 : 0));
+  readonly snapshot = computed<WorkoutSnapshot>(() => ({
+    session: this.session(),
+    pendingSetUpdates: this.pending(),
+    localSets: this.localSets(),
+    finishQueued: this.finishQueued()
+  }));
 
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly queues = new Map<string, Promise<void>>();
   // Bumped on every local edit so a late server response never overwrites newer values.
   private readonly versions = new Map<string, number>();
+  private syncing: Promise<void> | null = null;
 
-  restore(session: WorkoutSession | null, pending: PendingSetUpdate[]): void {
+  restore(snapshot: Partial<WorkoutSnapshot>): void {
     this.timers.forEach((timer) => clearTimeout(timer));
     this.timers.clear();
     this.queues.clear();
     this.versions.clear();
-    this.session.set(session);
-    this.pending.set(pending);
+    this.session.set(snapshot.session ?? null);
+    this.pending.set(snapshot.pendingSetUpdates ?? []);
+    this.localSets.set(snapshot.localSets ?? []);
+    this.finishQueued.set(snapshot.finishQueued ?? null);
   }
 
-  load(): Promise<boolean> {
+  /** Sends offline changes, then reloads the active session from the server. */
+  async load(): Promise<boolean> {
+    await this.sync();
+    // Keep the local copy while it has changes the server doesn't know about yet.
+    if (this.unsyncedCount()) return false;
     return this.status.run(async () => this.session.set(await this.api.active()));
+  }
+
+  /** Sends everything done offline, in order: new sets, set values, then a queued finish. */
+  sync(): Promise<void> {
+    this.syncing ??= this.sendOfflineChanges().finally(() => (this.syncing = null));
+    return this.syncing;
   }
 
   start(routineId: string, routineDayId?: string): Promise<boolean> {
@@ -52,14 +83,16 @@ export class WorkoutStore {
     });
   }
 
-  addSet(sessionExerciseId: string): Promise<boolean> {
-    return this.status.run(async () => {
-      const set = await this.api.addSet(sessionExerciseId);
-      this.session.update((session) => session && {
-        ...session,
-        exercises: session.exercises.map((exercise) => exercise.id === sessionExerciseId ? { ...exercise, sets: [...exercise.sets, set] } : exercise)
-      });
-    });
+  async addSet(sessionExerciseId: string): Promise<void> {
+    try {
+      this.appendSet(sessionExerciseId, await this.api.addSet(sessionExerciseId));
+    } catch (error) {
+      if (!isOffline(error)) return this.status.report(error, 'workout-set');
+      const localId = LOCAL_ID_PREFIX + crypto.randomUUID();
+      const previous = this.session()?.exercises.find((exercise) => exercise.id === sessionExerciseId)?.sets.at(-1);
+      this.appendSet(sessionExerciseId, { id: localId, weight: null, reps: null, target: previous?.target ?? '', completed: false });
+      this.localSets.update((sets) => [...sets, { localId, sessionExerciseId }]);
+    }
   }
 
   updateSet(setId: string, changes: Partial<SetValues>, delayMs = TYPING_DEBOUNCE_MS): void {
@@ -67,7 +100,8 @@ export class WorkoutStore {
     this.versions.set(setId, this.version(setId) + 1);
     this.patchSet(setId, changes);
     this.pending.update((updates) => updates.map((update) => update.setId === setId ? { ...update, ...changes } : update));
-    this.scheduleWrite(setId, delayMs);
+    // Local sets are sent with their latest values once the server creates them.
+    if (!setId.startsWith(LOCAL_ID_PREFIX)) this.scheduleWrite(setId, delayMs);
   }
 
   toggleSet(setId: string): void {
@@ -75,29 +109,71 @@ export class WorkoutStore {
     if (set) this.updateSet(setId, { completed: !set.completed }, 0);
   }
 
-  async save(): Promise<boolean> {
-    const session = this.session();
-    if (!session) return false;
+  /** Saves pending changes and refreshes the session from the server. */
+  async save(): Promise<void> {
     await this.flushWrites();
-    await this.retryPending();
-    return this.status.run(async () => this.session.set(await this.api.active(session.id)));
+    await this.load();
   }
 
+  /** Finishes the workout (queued while offline). Resolves to false if the server rejected it. */
   async finish(): Promise<boolean> {
     const session = this.session();
     if (!session) return false;
     await this.flushWrites();
-    await this.retryPending();
-    const finished = await this.status.run(async () => {
-      if (this.pending().length) throw new AppError('Hay cambios pendientes de sincronizar. Recupera la conexión e inténtalo de nuevo.');
-      await this.api.finish(session.id);
-      this.restore(null, []);
+    this.finishQueued.set(session.id);
+    this.history.addLocal({
+      ...session,
+      status: 'completed',
+      finishedAt: new Date().toISOString(),
+      durationMinutes: Math.max(1, Math.round((Date.now() - Date.parse(session.startedAt)) / 60000))
     });
-    if (finished) await this.history.load();
-    return finished;
+    await this.sync();
+    return this.finishQueued() === session.id || this.session() === null;
   }
 
-  async retryPending(): Promise<void> {
+  /**
+   * For when the page is hidden (tab closed, app switched): edits still waiting for their
+   * debounce are queued as pending, so they survive a reload, and are sent right away.
+   */
+  saveBeforeLeaving(): void {
+    const session = this.session();
+    if (!session || !this.timers.size) return;
+    const unsent = [...this.timers.keys()].flatMap((setId) => {
+      const set = this.findSet(setId);
+      return set ? [{ sessionId: session.id, setId, weight: set.weight, reps: set.reps, completed: set.completed }] : [];
+    });
+    const unsentIds = new Set(unsent.map((update) => update.setId));
+    this.pending.update((updates) => [...updates.filter((update) => !unsentIds.has(update.setId)), ...unsent]);
+    void this.flushWrites();
+  }
+
+  private async sendOfflineChanges(): Promise<void> {
+    if (!this.session()) return;
+    await this.createLocalSets();
+    await this.retryPending();
+    await this.sendQueuedFinish();
+  }
+
+  private async createLocalSets(): Promise<void> {
+    for (const local of this.localSets()) {
+      try {
+        const saved = await this.api.addSet(local.sessionExerciseId);
+        this.replaceSetId(local.localId, saved.id);
+        await this.enqueue(saved.id, () => this.writeLatest(saved.id));
+      } catch (error) {
+        if (isOffline(error)) return;
+        // The server can't create it (e.g. the workout is no longer active): drop it.
+        this.status.report(error, 'workout-set');
+        this.session.update((session) => session && {
+          ...session,
+          exercises: session.exercises.map((exercise) => ({ ...exercise, sets: exercise.sets.filter((set) => set.id !== local.localId) }))
+        });
+      }
+      this.localSets.update((sets) => sets.filter((item) => item.localId !== local.localId));
+    }
+  }
+
+  private async retryPending(): Promise<void> {
     const session = this.session();
     if (!session) return;
     // Sets with a scheduled write will send their latest local values anyway.
@@ -106,6 +182,22 @@ export class WorkoutStore {
       if (this.pending().includes(update)) await this.send(update);
     })));
     if (!this.pending().length) this.status.clearError();
+  }
+
+  private async sendQueuedFinish(): Promise<void> {
+    const sessionId = this.finishQueued();
+    if (!sessionId || this.pending().length || this.localSets().length) return;
+    try {
+      await this.api.finish(sessionId);
+    } catch (error) {
+      if (isOffline(error)) return;
+      this.finishQueued.set(null);
+      this.history.remove(sessionId);
+      this.status.report(error, 'finish-workout');
+      return;
+    }
+    this.restore({});
+    await Promise.all([this.history.load(), this.progress.load()]);
   }
 
   private scheduleWrite(setId: string, delayMs: number): void {
@@ -161,7 +253,14 @@ export class WorkoutStore {
     return this.session()?.exercises.flatMap((exercise) => exercise.sets).find((set) => set.id === setId);
   }
 
-  private patchSet(setId: string, values: Partial<SetValues>): void {
+  private appendSet(sessionExerciseId: string, set: WorkoutSet): void {
+    this.session.update((session) => session && {
+      ...session,
+      exercises: session.exercises.map((exercise) => exercise.id === sessionExerciseId ? { ...exercise, sets: [...exercise.sets, set] } : exercise)
+    });
+  }
+
+  private patchSet(setId: string, values: Partial<WorkoutSet>): void {
     this.session.update((session) => session && {
       ...session,
       exercises: session.exercises.map((exercise) => ({
@@ -169,6 +268,12 @@ export class WorkoutStore {
         sets: exercise.sets.map((set) => set.id === setId ? { ...set, ...values } : set)
       }))
     });
+  }
+
+  private replaceSetId(localId: string, id: string): void {
+    this.patchSet(localId, { id });
+    this.versions.set(id, this.version(localId));
+    this.versions.delete(localId);
   }
 
   private version(setId: string): number {

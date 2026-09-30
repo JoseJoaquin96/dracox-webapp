@@ -14,6 +14,8 @@ export class AuthStore {
   readonly userId = computed(() => this.user()?.id ?? null);
   readonly isAuthenticated = computed(() => this.userId() !== null);
   readonly isAdmin = computed(() => this.profile()?.isAdmin ?? false);
+  readonly email = computed(() => this.user()?.email ?? '');
+  readonly displayName = computed(() => this.profile()?.displayName ?? null);
   readonly userName = computed(() => this.profile()?.displayName ?? this.user()?.email?.split('@')[0] ?? 'Atleta');
   readonly userInitial = computed(() => this.userName().charAt(0).toUpperCase());
   /** Resolves once the stored session and its profile have been restored. */
@@ -49,8 +51,20 @@ export class AuthStore {
     return error ? authErrorMessage(error, 'No se pudo actualizar la contraseña.') : null;
   }
 
+  async updateDisplayName(name: string): Promise<string | null> {
+    const userId = this.userId();
+    if (!userId) return 'Inicia sesión para editar tu perfil.';
+    const displayName = name.trim().slice(0, 60) || null;
+    const { error } = await supabase().from('profiles').update({ display_name: displayName }).eq('id', userId);
+    if (error) return isOffline(error) ? 'Sin conexión. Inténtalo de nuevo cuando vuelvas a tener red.' : 'No se pudo guardar el nombre.';
+    this.profile.update((profile) => ({ isAdmin: profile?.isAdmin ?? false, displayName }));
+    return null;
+  }
+
   async signOut(): Promise<void> {
-    await supabase().auth.signOut();
+    const { error } = await supabase().auth.signOut();
+    // Offline the global sign-out fails; still forget the session on this device.
+    if (error) await supabase().auth.signOut({ scope: 'local' });
     await this.setUser(null);
   }
 

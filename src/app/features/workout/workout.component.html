@@ -21,6 +21,7 @@
 
       @for (sessionExercise of current.exercises; track sessionExercise.id; let index = $index) {
         @let exercise = exercises.byId(sessionExercise.exerciseId);
+        @let fields = setFields[exercise?.kind ?? 'strength'];
         <article class="exercise-log-card surface-card">
           <div class="exercise-log-heading">
             <div class="exercise-title">
@@ -34,20 +35,29 @@
           <div class="previous-line">
             Último entrenamiento <strong>{{ previousPerformance().get(sessionExercise.exerciseId) ?? 'Sin registro anterior' }}</strong>
           </div>
-          <div class="sets-header"><span>SET</span><span>PESO <small>kg</small></span><span>REPS</span><span>OK</span></div>
+          <div class="sets-header">
+            <span>SET</span>
+            <span>{{ fields.weight?.toUpperCase() }} @if (fields.weight) { <small>kg</small> }</span>
+            <span>{{ fields.reps.toUpperCase() }}</span>
+            <span>OK</span>
+          </div>
 
           @for (set of sessionExercise.sets; track set.id; let setIndex = $index) {
             <div class="set-row" [class.completed]="set.completed">
               <span class="set-number">{{ setIndex + 1 }}</span>
-              <label class="number-field">
-                <input type="number" inputmode="decimal" min="0" step="0.5" placeholder="-"
-                       [attr.aria-label]="'Peso de la serie ' + (setIndex + 1)"
-                       [ngModel]="set.weight" (ngModelChange)="setWeight(set.id, $event)" />
-                <small>kg</small>
-              </label>
+              @if (fields.weight) {
+                <label class="number-field">
+                  <input type="number" inputmode="decimal" min="0" step="0.5" placeholder="-"
+                         [attr.aria-label]="fields.weight + ' de la serie ' + (setIndex + 1)"
+                         [ngModel]="set.weight" (ngModelChange)="setWeight(set.id, $event)" />
+                  <small>kg</small>
+                </label>
+              } @else {
+                <span></span>
+              }
               <label class="number-field reps-field">
                 <input type="number" inputmode="numeric" min="0" step="1" placeholder="-"
-                       [attr.aria-label]="'Repeticiones de la serie ' + (setIndex + 1)"
+                       [attr.aria-label]="fields.reps + ' de la serie ' + (setIndex + 1)"
                        [ngModel]="set.reps" (ngModelChange)="setReps(set.id, $event)" />
                 <small>{{ set.target }}</small>
               </label>

@@ -16,7 +16,7 @@ export class ShellComponent {
   private readonly workout = inject(WorkoutStore);
   private readonly router = inject(Router);
   readonly plural = plural;
-  readonly pendingCount = computed(() => this.workout.pendingUpdates().length);
+  readonly pendingCount = this.workout.unsyncedCount;
   readonly syncLabel = computed(() => {
     if (this.pendingCount()) return 'Pendiente de sincronizar';
     if (this.status.loading()) return 'Sincronizando';
@@ -29,12 +29,5 @@ export class ShellComponent {
     effect(() => {
       if (!this.auth.isAuthenticated()) void this.router.navigateByUrl('/login');
     });
-  }
-
-  async signOut(): Promise<void> {
-    const pending = this.pendingCount();
-    const message = `Tienes ${pending} ${plural(pending, 'cambio')} sin sincronizar que se perderán. ¿Cerrar sesión igualmente?`;
-    if (pending && !window.confirm(message)) return;
-    await this.auth.signOut();
   }
 }

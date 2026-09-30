@@ -6,13 +6,14 @@ Primera versión de una aplicación personal para planificar y registrar entrena
 
 - Dashboard de hoy con próxima sesión, volumen, tiempo y racha.
 - CRUD de rutinas con varios días y persistencia remota en Supabase.
-- Caché local por usuario y cola de series pendientes si falla temporalmente la conexión.
-- Inicio de entrenamiento, registro de peso/repeticiones/series y temporizador de descanso.
-- Historial real de sesiones y panel de progreso.
-- Biblioteca de ejercicios con búsqueda, filtros por grupo muscular y ejercicios personalizados.
+- Entrenamiento sin conexión: las series, las series nuevas y el final del entrenamiento se sincronizan al volver la red.
+- Registro por tipo de ejercicio (peso, lastre, segundos o metros) y temporizador de descanso.
+- Historial paginado y progreso con récords, 1RM estimado, volumen semanal y evolución por ejercicio.
+- Biblioteca de ejercicios con búsqueda, filtros y ejercicios personalizados editables.
+- Perfil con nombre editable.
 - Registro de errores y panel protegido para administradores.
 - Registro, login y recuperación de contraseña mediante email en Supabase.
-- Responsive mobile-first y manifest PWA.
+- Responsive mobile-first e instalable como PWA (funciona sin conexión).
 
 ## Arranque
 

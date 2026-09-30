@@ -35,4 +35,22 @@ export class ExerciseStore {
       this.state.set(await this.api.list());
     });
   }
+
+  update(id: string, draft: ExerciseDraft): Promise<boolean> {
+    return this.status.run(async () => {
+      await this.api.update(id, draft);
+      this.state.set(await this.api.list());
+    });
+  }
+
+  remove(id: string): Promise<boolean> {
+    return this.status.run(async () => {
+      await this.api.remove(id);
+      this.state.update((exercises) => exercises.filter((exercise) => exercise.id !== id));
+    });
+  }
+
+  isOwn(exercise: Exercise): boolean {
+    return exercise.ownerId !== null && exercise.ownerId === this.auth.userId();
+  }
 }

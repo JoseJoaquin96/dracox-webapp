@@ -1648,11 +1648,16 @@ h1 em {
 }
 .full-width-link {
   display: flex;
-  padding-top: 18px;
+  width: 100%;
+  padding: 18px 0 0;
   margin-top: 7px;
+  border: 0;
   border-top: 1px solid var(--line);
+  background: none;
   color: var(--muted);
+  font: inherit;
   font-size: 10px;
+  cursor: pointer;
 }
 .full-width-link span {
   color: var(--lime);
@@ -2935,4 +2940,48 @@ body {
   .error-log-row {
     gap: 8px;
   }
+}
+
+/* Profile */
+a.mini-profile {
+  color: inherit;
+}
+.profile-card {
+  display: grid;
+  gap: 16px;
+  max-width: 520px;
+  padding: 25px;
+}
+.profile-card .modal-actions {
+  justify-content: flex-start;
+}
+
+/* Own exercises */
+.exercise-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.exercise-card-actions button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 9px;
+  cursor: pointer;
+}
+.exercise-card-actions button:hover {
+  color: var(--lime);
+}
+
+/* Progress */
+.progress-evolution {
+  margin-bottom: 18px;
+}
+.progress-select {
+  max-width: 260px;
+  margin-bottom: 18px;
+}
+.highlight-main .chart-area {
+  height: 150px;
 }

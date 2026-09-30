@@ -17,11 +17,11 @@
     </nav>
 
     <div class="sidebar-bottom">
-      <div class="mini-profile">
+      <a class="mini-profile" routerLink="/profile" aria-label="Tu perfil">
         <span class="avatar">{{ auth.userInitial() }}</span>
-        <span><strong>{{ auth.userName() }}</strong><small>Modo personal</small></span>
+        <span><strong>{{ auth.userName() }}</strong><small>Ver perfil</small></span>
         <span class="status-dot"></span>
-      </div>
+      </a>
       <div class="sidebar-tip">
         <span class="tip-icon">✳</span>
         <span><strong>Tu progreso, tu ritmo</strong><small>La constancia gana.</small></span>
@@ -34,9 +34,7 @@
       <div class="mobile-brand"><span class="brand-mark">D</span><strong>dracox</strong></div>
       <div class="topbar-actions">
         <span class="sync-pill"><i></i> {{ syncLabel() }}</span>
-        <button class="avatar avatar-button" type="button" (click)="signOut()" aria-label="Cerrar sesión" title="Cerrar sesión">
-          {{ auth.userInitial() }}
-        </button>
+        <a class="avatar avatar-button" routerLink="/profile" aria-label="Tu perfil" title="Tu perfil">{{ auth.userInitial() }}</a>
       </div>
     </header>
 

@@ -2,6 +2,8 @@ export type ExerciseKind = 'strength' | 'bodyweight' | 'timed' | 'distance';
 
 export interface Exercise {
   id: string;
+  /** Null for the shared catalogue; the user's id for their own exercises. */
+  ownerId: string | null;
   name: string;
   muscle: string;
   secondary: string;
@@ -76,6 +78,45 @@ export interface WorkoutSession {
 export interface PendingSetUpdate extends SetValues {
   sessionId: string;
   setId: string;
+}
+
+/** A set added while offline; it only has a local id until the server creates it. */
+export interface LocalSet {
+  localId: string;
+  sessionExerciseId: string;
+}
+
+/** Everything needed to resume the workout (and its unsynced changes) after a reload. */
+export interface WorkoutSnapshot {
+  session: WorkoutSession | null;
+  pendingSetUpdates: PendingSetUpdate[];
+  localSets: LocalSet[];
+  /** Id of a session finished while offline, waiting to be sent. */
+  finishQueued: string | null;
+}
+
+export interface PersonalRecord {
+  exerciseId: string;
+  weight: number;
+  reps: number;
+  date: string;
+}
+
+export interface ProgressSummary {
+  sessions: number;
+  completedSets: number;
+  volume: number;
+  records: PersonalRecord[];
+  /** Local dates (YYYY-MM-DD) with at least one finished workout. */
+  trainingDays: string[];
+  /** Last 8 weeks; weeks without training are missing. */
+  weeklyVolume: { weekStart: string; volume: number }[];
+}
+
+export interface ExerciseProgressPoint {
+  date: string;
+  weight: number;
+  reps: number;
 }
 
 export interface Profile {

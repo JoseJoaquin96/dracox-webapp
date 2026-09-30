@@ -1,0 +1,22 @@
+<div class="page-heading compact-heading">
+  <div>
+    <p class="eyebrow">Tu cuenta</p>
+    <h1>Tu <em>perfil.</em></h1>
+    <p class="heading-subtitle">{{ auth.email() }}</p>
+  </div>
+</div>
+
+<section class="surface-card profile-card">
+  <form (ngSubmit)="saveName()">
+    <label class="field-label">Nombre
+      <input name="displayName" maxlength="60" autocomplete="given-name" [ngModel]="name()" (ngModelChange)="name.set($event)">
+    </label>
+    @if (message(); as text) {
+      <p class="metric-foot" role="status">{{ text }}</p>
+    }
+    <div class="modal-actions">
+      <button class="button button-primary" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar nombre' }}</button>
+      <button class="button button-outline" type="button" (click)="signOut()">Cerrar sesión</button>
+    </div>
+  </form>
+</section>

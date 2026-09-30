@@ -2,7 +2,7 @@ import { Component, DestroyRef, computed, inject, input, signal, viewChild } fro
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RoutineDay, WorkoutSet } from '../../domain/models';
-import { lastPerformance, routineExercises } from '../../domain/stats';
+import { SET_FIELDS, lastPerformance, routineExercises } from '../../domain/stats';
 import { formatClock, formatPosition } from '../../shared/format';
 import { ExerciseStore } from '../../state/exercise.store';
 import { HistoryStore } from '../../state/history.store';
@@ -30,6 +30,7 @@ export class WorkoutComponent {
   private readonly now = signal(Date.now());
   readonly formatClock = formatClock;
   readonly formatPosition = formatPosition;
+  readonly setFields = SET_FIELDS;
 
   readonly routine = computed(() => this.routines.byId(this.routineId()) ?? null);
   readonly routineDay = computed<RoutineDay | null>(() => {
@@ -54,7 +55,8 @@ export class WorkoutComponent {
   });
   readonly previousPerformance = computed(() => {
     const sessions = this.history.sessions();
-    return new Map(this.session()?.exercises.map((exercise) => [exercise.exerciseId, lastPerformance(sessions, exercise.exerciseId)]));
+    return new Map(this.session()?.exercises.map(({ exerciseId }) =>
+      [exerciseId, lastPerformance(sessions, exerciseId, this.exercises.byId(exerciseId)?.kind)]));
   });
   private readonly plannedRest = computed(() => {
     const session = this.session();

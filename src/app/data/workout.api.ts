@@ -24,8 +24,9 @@ type SessionRow = {
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutApi {
-  async history(): Promise<WorkoutSession[]> {
-    const rows = unwrap(await supabase().rpc('get_my_workout_history', { p_routine_id: null })) as SessionRow[] | null;
+  /** Completed sessions started before `before` (or the latest ones), newest first. */
+  async history(limit: number, before: string | null = null): Promise<WorkoutSession[]> {
+    const rows = unwrap(await supabase().rpc('get_my_workout_history', { p_limit: limit, p_before: before })) as SessionRow[] | null;
     return (rows ?? []).map(toSession);
   }
 

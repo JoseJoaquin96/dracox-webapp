@@ -4,7 +4,7 @@
     <h1>Encuentra tu <em>movimiento.</em></h1>
     <p class="heading-subtitle">Una biblioteca clara para que cada ejercicio tenga su propio historial.</p>
   </div>
-  <button class="button button-primary" type="button" (click)="formOpen.set(true)">+ Crear ejercicio</button>
+  <button class="button button-primary" type="button" (click)="openForm()">+ Crear ejercicio</button>
 </div>
 
 <div class="exercise-toolbar">
@@ -25,6 +25,12 @@
       <div class="exercise-copy">
         <h2>{{ exercise.name }}</h2>
         <p>{{ exercise.muscle }} <span>·</span> {{ exercise.equipment }}</p>
+        @if (exercises.isOwn(exercise)) {
+          <div class="exercise-card-actions">
+            <button type="button" (click)="openForm(exercise)">Editar</button>
+            <button type="button" (click)="remove(exercise)">Borrar</button>
+          </div>
+        }
       </div>
       <span class="exercise-kind">{{ kindLabels[exercise.kind] }}</span>
     </article>
@@ -36,7 +42,10 @@
 </section>
 
 @if (formOpen()) {
-  <dracox-modal eyebrow="Biblioteca personal" heading="Crea tu movimiento." (closed)="formOpen.set(false)">
+  <dracox-modal
+    eyebrow="Biblioteca personal"
+    [heading]="editing() ? 'Edita tu movimiento.' : 'Crea tu movimiento.'"
+    (closed)="formOpen.set(false)">
     <label class="field-label">Nombre
       <input maxlength="80" placeholder="Ej. Press inclinado en máquina" [(ngModel)]="draft.name">
     </label>
@@ -56,7 +65,7 @@
     </label>
     <div class="modal-actions">
       <button class="button button-outline" type="button" (click)="formOpen.set(false)">Cancelar</button>
-      <button class="button button-primary" type="button" (click)="create()" [disabled]="saving() || !draft.name.trim()">
+      <button class="button button-primary" type="button" (click)="save()" [disabled]="saving() || !draft.name.trim()">
         {{ saving() ? 'Guardando...' : 'Guardar ejercicio' }}
       </button>
     </div>

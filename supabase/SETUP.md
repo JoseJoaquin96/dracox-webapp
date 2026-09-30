@@ -70,8 +70,16 @@ Routines are read with a nested select on `routines` → `routine_days` →
 - `update_workout_set(p_set_id, p_weight, p_reps, p_completed)` updates a set
   belonging to the authenticated user's active session.
 - `finish_workout(p_session_id)` closes the active session and returns it.
-- `get_my_workout_history(p_routine_id)` returns completed sessions with their
-  exercises and recorded sets. Pass `null` to read all routines.
+- `get_my_workout_history(p_limit, p_before)` returns completed sessions, newest
+  first, with their exercises and recorded sets. Pass the `started_at` of the last
+  session received as `p_before` to read the next page.
+- `get_my_progress_summary(p_timezone)` returns totals, personal records, training
+  days and the weekly volume of the last 8 weeks over the whole history.
+- `get_my_exercise_progress(p_exercise_id, p_limit)` returns the best set of each of
+  the last sessions that included the exercise.
+
+Since migration 0011 the write RPCs run as `security definer` and the routine and
+workout tables are read-only for clients: every change goes through an RPC.
 
 The Angular app uses these RPCs directly. RLS and the authenticated RPC checks
 keep every routine and workout session scoped to its owner.
@@ -99,9 +107,13 @@ keep every routine and workout session scoped to its owner.
     routine day ids stable when editing and serializes `add_workout_set`.
     Once the new app version is deployed, apply
     `migrations/0009_drop_legacy_rpcs.sql` to remove RPCs the app no longer uses.
+    `migrations/0010_paginated_history.sql` changes the history RPC signature: apply it
+    at the same time you deploy the app version that paginates the history, together with
+    `migrations/0011_rpc_only_writes.sql` (routine and workout data can only be written
+    through the RPCs) and `migrations/0012_progress_stats.sql` (progress statistics).
 11. Replace `REEMPLAZA_CON_TU_EMAIL` in `seeds/001_current_routine.sql` and run it once in the SQL Editor. It creates one four-day routine and archives the old four-routine version if present.
 12. Promote your account to administrator with `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'tu-email');`.
-13. Run the matching files in `tests/` (`0001` through `0009`) in the SQL Editor as verification steps.
+13. Run the matching files in `tests/` (`0001` through `0012`) in the SQL Editor as verification steps.
 
 The public/publishable key may be used by the browser only together with the
 RLS policies in the migration. Never expose the `service_role` key.

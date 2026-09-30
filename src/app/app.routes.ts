@@ -19,6 +19,7 @@ export const routes: Routes = [
       { path: 'workout/:routineId', loadComponent: () => import('./features/workout/workout.component').then((m) => m.WorkoutComponent) },
       { path: 'progress', loadComponent: () => import('./features/progress/progress.component').then((m) => m.ProgressComponent) },
       { path: 'exercises', loadComponent: () => import('./features/exercises/exercises.component').then((m) => m.ExercisesComponent) },
+      { path: 'profile', loadComponent: () => import('./features/profile/profile.component').then((m) => m.ProfileComponent) },
       {
         path: 'admin/errors',
         canActivate: [adminGuard],

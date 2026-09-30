@@ -2,10 +2,11 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
 import { WorkoutSession } from '../../domain/models';
-import { currentStreak, muscleDistribution, plannedSets, routineExercises, sessionTimestamp, sessionVolume, sessionsSince, startOfWeek, weekActivity } from '../../domain/stats';
+import { currentStreak, localDayKey, muscleDistribution, plannedSets, routineExercises, sessionTimestamp, sessionVolume, sessionsSince, startOfWeek, weekActivity } from '../../domain/stats';
 import { formatNumber, formatShortDate, plural } from '../../shared/format';
 import { ExerciseStore } from '../../state/exercise.store';
 import { HistoryStore } from '../../state/history.store';
+import { ProgressStore } from '../../state/progress.store';
 import { RoutineStore } from '../../state/routine.store';
 
 const MUSCLE_COLORS = ['var(--orange)', 'var(--violet)', 'var(--green)', '#72b6ff'];
@@ -18,6 +19,7 @@ export class DashboardComponent {
   readonly auth = inject(AuthStore);
   private readonly exercises = inject(ExerciseStore);
   private readonly history = inject(HistoryStore);
+  private readonly progress = inject(ProgressStore);
   private readonly routines = inject(RoutineStore);
   private readonly now = new Date();
 
@@ -43,7 +45,11 @@ export class DashboardComponent {
   readonly maxDayMinutes = computed(() => Math.max(...this.week().map((day) => day.minutes)));
   readonly chartMax = computed(() => Math.max(4, ...this.week().map((day) => day.sessions)));
   readonly yTicks = computed(() => [1, 0.75, 0.5, 0.25, 0].map((ratio) => Math.round(this.chartMax() * ratio * 10) / 10));
-  readonly streak = computed(() => currentStreak(this.history.sessions(), this.now));
+  // Server days cover the whole history; local ones include workouts finished offline.
+  readonly streak = computed(() => currentStreak([
+    ...this.progress.summary().trainingDays,
+    ...this.history.sessions().map((session) => localDayKey(sessionTimestamp(session)))
+  ], this.now));
   readonly muscles = computed(() => muscleDistribution(this.weekSessions(), (id) => this.exercises.byId(id)?.muscle).slice(0, 4));
 
   volume(session: WorkoutSession): number {
