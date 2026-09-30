@@ -1,0 +1,83 @@
+<div class="page-heading compact-heading">
+  <div>
+    <p class="eyebrow">Tu biblioteca</p>
+    <h1>Rutinas que te hacen <em>avanzar.</em></h1>
+    <p class="heading-subtitle">Diseña tu programa y registra cada entrenamiento.</p>
+  </div>
+  <button class="button button-primary" type="button" (click)="openEditor()">+ Nueva rutina</button>
+</div>
+
+<section class="program-banner surface-card">
+  <div>
+    <span class="eyebrow">Programa activo</span>
+    <h2>Mis rutinas</h2>
+    <p>Elige el día que entrenas cada vez. No hay días fijos obligatorios.</p>
+  </div>
+  <button class="ghost-button" type="button" (click)="openEditor()">Crear rutina <span>-></span></button>
+</section>
+
+<div class="toolbar">
+  <div class="tabs">
+    <button class="tab" type="button" [class.active]="!showArchived()" (click)="showArchived.set(false)">
+      Mis rutinas <span>{{ routines.active().length }}</span>
+    </button>
+    <button class="tab" type="button" [class.active]="showArchived()" (click)="showArchived.set(true)">
+      Archivadas <span>{{ routines.archived().length }}</span>
+    </button>
+  </div>
+</div>
+
+<section class="routine-grid">
+  @for (routine of visibleRoutines(); track routine.id) {
+    <article class="routine-card surface-card" [style.--accent]="routine.color">
+      <div class="routine-card-top">
+        <span class="routine-mark">{{ routine.name.slice(0, 1) }}</span>
+        @if (!routine.archivedAt) {
+          <button class="ghost-icon" type="button" (click)="openEditor(routine)" aria-label="Editar rutina">...</button>
+        }
+      </div>
+      <div class="routine-card-copy">
+        <span class="routine-days">{{ routine.daysLabel }}</span>
+        <h2>{{ routine.name }}</h2>
+        <p>{{ routine.focus }}</p>
+      </div>
+      <div class="routine-stats">
+        <span>· {{ routine.duration }} min</span>
+        <span>· {{ plannedSets(routine) }} series</span>
+        <span>{{ routineExercises(routine).length }} ejercicios</span>
+      </div>
+      <div class="routine-card-footer">
+        @if (routine.archivedAt) {
+          <button class="button button-small button-primary" type="button" (click)="restore(routine)">Restaurar</button>
+        } @else {
+          @for (day of routine.days; track day.id) {
+            <a class="button button-small button-primary" [routerLink]="['/workout', routine.id, day.id]">{{ day.name }} -></a>
+          }
+          <button class="button button-small button-outline" type="button" (click)="openEditor(routine)">Editar</button>
+          <button class="delete-link" type="button" (click)="archive(routine)">Archivar</button>
+        }
+      </div>
+    </article>
+  } @empty {
+    <div class="empty-state surface-card">
+      <span>+</span>
+      @if (showArchived()) {
+        <h2>No hay rutinas archivadas</h2>
+        <p>Cuando archives una rutina aparecerá aquí.</p>
+      } @else {
+        <h2>Todavía no tienes rutinas</h2>
+        <p>Crea tu primera rutina para empezar.</p>
+      }
+    </div>
+  }
+
+  @if (!showArchived()) {
+    <button class="new-routine-card" type="button" (click)="openEditor()">
+      <span>+</span><strong>Crear una nueva rutina</strong><small>Empieza desde cero y hazla tuya</small>
+    </button>
+  }
+</section>
+
+@if (editorOpen()) {
+  <dracox-routine-editor [routine]="editing()" (closed)="editorOpen.set(false)" />
+}

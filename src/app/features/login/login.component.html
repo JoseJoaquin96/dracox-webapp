@@ -1,0 +1,103 @@
+<main class="login-page">
+  <section class="login-card surface-card">
+    <div class="brand login-brand">
+      <span class="brand-mark">D</span>
+      <span><strong>dracox</strong><small>TRAINING OS</small></span>
+    </div>
+
+    <div class="login-heading">
+      <span class="eyebrow">Espacio personal</span>
+      @if (mode() === 'reset') {
+        <h1>Crea una nueva<br><em>contraseña segura.</em></h1>
+      } @else {
+        <h1>Tu entrenamiento,<br><em>solo para ti.</em></h1>
+      }
+      <p>{{ subtitle() }}</p>
+    </div>
+
+    @if (!supabaseConfigured) {
+      <div class="login-message login-warning">
+        Falta configurar Supabase. Crea <code>src/assets/supabase-config.json</code> a partir del archivo de ejemplo.
+      </div>
+    } @else {
+      @if (success(); as message) {
+        <div class="login-message login-success">{{ message }}</div>
+      }
+      @if (error(); as message) {
+        <p class="login-error">{{ message }}</p>
+      }
+
+      @switch (mode()) {
+        @case ('login') {
+          <form (ngSubmit)="signIn()">
+            <label class="field-label">Email
+              <input type="email" name="email" [(ngModel)]="email" autocomplete="email" required>
+            </label>
+            <label class="field-label">Contraseña
+              <input type="password" name="password" [(ngModel)]="password" autocomplete="current-password" required>
+            </label>
+            <button class="button button-primary login-submit" type="submit" [disabled]="busy() || !email.trim() || !password">
+              {{ busy() ? 'Entrando…' : 'Iniciar sesión' }}
+            </button>
+            <div class="login-actions">
+              <button class="login-link" type="button" (click)="setMode('forgot')">¿Has olvidado la contraseña?</button>
+            </div>
+            <p class="auth-switch">¿No tienes cuenta? <button class="login-link" type="button" (click)="setMode('register')">Crear cuenta</button></p>
+          </form>
+        }
+
+        @case ('register') {
+          <form (ngSubmit)="register()">
+            <label class="field-label">Nombre
+              <input type="text" name="displayName" [(ngModel)]="displayName" autocomplete="given-name" maxlength="60">
+            </label>
+            <label class="field-label">Email
+              <input type="email" name="email" [(ngModel)]="email" autocomplete="email" required>
+            </label>
+            <ng-container *ngTemplateOutlet="newPassword" />
+            <button class="button button-primary login-submit" type="submit" [disabled]="busy() || !email.trim() || !passwordPairValid()">
+              {{ busy() ? 'Creando cuenta…' : 'Crear cuenta' }}
+            </button>
+            <p class="auth-switch">¿Ya tienes cuenta? <button class="login-link" type="button" (click)="setMode('login')">Iniciar sesión</button></p>
+          </form>
+        }
+
+        @case ('forgot') {
+          <form (ngSubmit)="requestReset()">
+            <label class="field-label">Email
+              <input type="email" name="email" [(ngModel)]="email" autocomplete="email" required>
+            </label>
+            <button class="button button-primary login-submit" type="submit" [disabled]="busy() || !email.trim()">
+              {{ busy() ? 'Enviando…' : 'Enviar enlace' }}
+            </button>
+            <p class="auth-switch"><button class="login-link" type="button" (click)="setMode('login')">Volver a iniciar sesión</button></p>
+          </form>
+        }
+
+        @case ('reset') {
+          <form (ngSubmit)="resetPassword()">
+            <ng-container *ngTemplateOutlet="newPassword" />
+            <button class="button button-primary login-submit" type="submit" [disabled]="busy() || !passwordPairValid()">
+              {{ busy() ? 'Guardando…' : 'Guardar contraseña' }}
+            </button>
+          </form>
+        }
+      }
+    }
+  </section>
+</main>
+
+<ng-template #newPassword>
+  <label class="field-label">{{ mode() === 'reset' ? 'Nueva contraseña' : 'Contraseña' }}
+    <input type="password" name="password" [(ngModel)]="password" autocomplete="new-password" [minlength]="minPasswordLength" required>
+  </label>
+  <label class="field-label">Repite la contraseña
+    <input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" autocomplete="new-password" [minlength]="minPasswordLength" required>
+  </label>
+  @if (password && password.length < minPasswordLength) {
+    <small class="password-hint">Usa al menos {{ minPasswordLength }} caracteres.</small>
+  }
+  @if (confirmPassword && password !== confirmPassword) {
+    <small class="password-hint">Las contraseñas no coinciden.</small>
+  }
+</ng-template>

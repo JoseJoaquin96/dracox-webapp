@@ -46,11 +46,22 @@ La versión desplegada está disponible en
 
 ## Decisiones técnicas
 
-- Angular 21 con componentes standalone y rutas lazy.
-- Signals para el estado de la aplicación.
+- Angular 21 con componentes standalone, rutas lazy y signals.
 - Supabase gestiona autenticación y persistencia de rutinas y entrenamientos.
-- `WorkoutStore` mantiene una caché local por usuario para tolerar cortes breves de red.
+- La caché local por usuario permite abrir la app y registrar series sin conexión.
 - Las políticas RLS limitan los datos de cada usuario y los logs al panel administrador.
+
+### Estructura de `src/app`
+
+| Carpeta | Contenido |
+| --- | --- |
+| `core/` | Supabase, autenticación y guards, errores, estado de sincronización y caché local. |
+| `domain/` | Modelos y cálculos puros (volumen, rachas, récords…). |
+| `data/` | Acceso a Supabase por dominio; traduce filas a modelos. |
+| `state/` | Stores con signals (ejercicios, rutinas, historial, entrenamiento) y `DataSync`, que los carga al iniciar sesión. |
+| `layout/` | Shell con navegación para las páginas autenticadas. |
+| `features/` | Una carpeta por página, con su componente y su plantilla HTML. |
+| `shared/` | Componentes y utilidades de formato reutilizables. |
 
 El flujo de autenticación usa email y contraseña con confirmación por correo y
 recuperación mediante enlace de un solo uso. Configura las URL de redirección

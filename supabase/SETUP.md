@@ -40,9 +40,9 @@ day whenever they train.
 
 ### RPC contract
 
-- `get_my_routines()` returns the current user's routines with nested exercises.
-- `create_routine(p_name, p_focus, p_days, p_duration, p_color, p_exercises)`
-  remains as a backwards-compatible single-day creator.
+Routines are read with a nested select on `routines` → `routine_days` →
+`routine_exercises` (RLS scopes them to the owner). Writes use these RPCs:
+
 - `create_routine_program(p_name, p_focus, p_duration, p_color, p_days)` returns
   one routine UUID. `p_days` is an ordered JSON array of day blocks, for example:
 
@@ -57,14 +57,13 @@ day whenever they train.
   ]
   ```
 
-- `get_my_routine_days(p_routine_id)` returns the selectable days and their exercises.
 - `start_workout(p_routine_id, p_routine_day_id)` returns the active session UUID
   and is idempotent when the same routine day is already active.
 - `archive_routine(p_routine_id)` and `unarchive_routine(p_routine_id)` change
   visibility without deleting the routine or its history.
 - `update_routine_program(p_routine_id, p_name, p_focus, p_duration, p_color, p_days)`
   replaces the editable definition of an active routine while leaving old
-  workout snapshots untouched.
+  workout snapshots untouched. Days sent with their `id` keep it.
 - `get_my_active_workout(p_session_id)` reads the authenticated user's active
   session, including its sets.
 - `add_workout_set(p_session_exercise_id)` adds one set to the active session.
@@ -98,9 +97,11 @@ keep every routine and workout session scoped to its owner.
     promoting themselves to admin and limits error log size and rate.
     Finally apply `migrations/0008_stable_routine_days_and_set_lock.sql`, which keeps
     routine day ids stable when editing and serializes `add_workout_set`.
+    Once the new app version is deployed, apply
+    `migrations/0009_drop_legacy_rpcs.sql` to remove RPCs the app no longer uses.
 11. Replace `REEMPLAZA_CON_TU_EMAIL` in `seeds/001_current_routine.sql` and run it once in the SQL Editor. It creates one four-day routine and archives the old four-routine version if present.
 12. Promote your account to administrator with `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'tu-email');`.
-13. Run the matching files in `tests/` (`0001` through `0008`) in the SQL Editor as verification steps.
+13. Run the matching files in `tests/` (`0001` through `0009`) in the SQL Editor as verification steps.
 
 The public/publishable key may be used by the browser only together with the
 RLS policies in the migration. Never expose the `service_role` key.

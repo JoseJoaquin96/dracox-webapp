@@ -1,0 +1,119 @@
+<dracox-modal
+  panelClass="routine-editor-modal"
+  [eyebrow]="routine() ? 'Editar rutina' : 'Nueva rutina'"
+  [heading]="step() === 'details' ? 'Empieza por lo esencial.' : 'Construye tu programa.'"
+  (closed)="closed.emit()">
+
+  <div class="builder-steps">
+    <span [class.active]="step() === 'details'" [class.done]="step() === 'exercises'">1 <b>Datos</b></span>
+    <i></i>
+    <span [class.active]="step() === 'exercises'">2 <b>Ejercicios</b></span>
+  </div>
+
+  <div class="editor-fields">
+    <label class="field-label">Nombre
+      <input maxlength="80" placeholder="Ej. Hipertrofia 4 días" [ngModel]="draft().name" (ngModelChange)="patch({ name: $event })">
+    </label>
+    <label class="field-label">Enfoque
+      <input maxlength="120" placeholder="Ej. Pecho - Espalda - Pierna" [ngModel]="draft().focus" (ngModelChange)="patch({ focus: $event })">
+    </label>
+    <label class="field-label">Duración (min)
+      <input type="number" min="0" max="300" step="5" [ngModel]="draft().duration" (ngModelChange)="patch({ duration: toCount($event, draft().duration, 0) })">
+    </label>
+    <label class="field-label">{{ step() === 'details' ? 'Primer día' : 'Nombre del día' }}
+      <input maxlength="60" placeholder="Ej. Upper A" [ngModel]="day().name" (ngModelChange)="renameDay($event)">
+    </label>
+  </div>
+
+  @if (step() === 'details') {
+    <div class="builder-explanation">
+      <span>*</span>
+      <div>
+        <strong>Primero crea la estructura</strong>
+        <p>Después podrás añadir varios días y sus ejercicios. Los pesos se registran al entrenar.</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="button button-outline" type="button" (click)="closed.emit()">Cancelar</button>
+      <button class="button button-primary" type="button" (click)="step.set('exercises')" [disabled]="!draft().name.trim()">Continuar -></button>
+    </div>
+  } @else {
+    <div class="builder-intro">
+      <div><span class="eyebrow">Paso 2 de 2</span><strong>Añade los ejercicios del día</strong></div>
+      <p>La rutina puede tener tantos días como necesites. Luego eliges cuál haces.</p>
+    </div>
+
+    <div class="routine-day-editor">
+      <label class="field-label">Día
+        <select [ngModel]="dayIndex()" (ngModelChange)="selectDay($event)">
+          @for (item of draft().days; track $index) {
+            <option [ngValue]="$index">{{ item.name }}</option>
+          }
+        </select>
+      </label>
+      <button type="button" class="button button-small button-outline" (click)="addDay()">+ Día</button>
+      <button type="button" class="button button-small button-outline" (click)="removeDay()" [disabled]="draft().days.length <= 1">Quitar día</button>
+    </div>
+
+    <div class="editor-section-heading">
+      <div>
+        <span class="eyebrow">Estructura de la sesión</span>
+        <strong>{{ day().exercises.length ? 'Ejercicios del día' : 'Aún no hay ejercicios' }}</strong>
+      </div>
+      <span>{{ day().exercises.length }} bloques</span>
+    </div>
+
+    <div class="editor-exercise-list">
+      @for (planned of day().exercises; track $index; let index = $index, first = $first, last = $last) {
+        @let exercise = exercises.byId(planned.exerciseId);
+        <div class="editor-exercise-row">
+          <span class="editor-exercise-number">{{ formatPosition(index) }}</span>
+          <div class="editor-exercise-name">
+            <strong>{{ exercise?.name ?? 'Ejercicio eliminado' }}</strong>
+            <small>{{ exercise ? exercise.muscle + ' - ' + exercise.equipment : 'Sin datos' }}</small>
+          </div>
+          <label class="mini-field"><span>Series</span>
+            <input type="number" min="1" max="20" [ngModel]="planned.sets" (ngModelChange)="updateExercise(index, { sets: toCount($event, planned.sets) })">
+          </label>
+          <label class="mini-field"><span>Reps</span>
+            <input maxlength="20" [ngModel]="planned.repRange" (ngModelChange)="updateExercise(index, { repRange: $event })">
+          </label>
+          <label class="mini-field rest-field"><span>Descanso</span>
+            <input type="number" min="0" step="15" [ngModel]="planned.restSeconds" (ngModelChange)="updateExercise(index, { restSeconds: toCount($event, planned.restSeconds, 0) })">
+            <small>s</small>
+          </label>
+          <div class="editor-row-actions">
+            <button class="row-icon" type="button" (click)="moveExercise(index, -1)" [disabled]="first" aria-label="Subir ejercicio">^</button>
+            <button class="row-icon" type="button" (click)="moveExercise(index, 1)" [disabled]="last" aria-label="Bajar ejercicio">v</button>
+            <button class="row-icon danger" type="button" (click)="removeExercise(index)" aria-label="Eliminar ejercicio">x</button>
+          </div>
+        </div>
+      } @empty {
+        <div class="editor-empty">
+          <span>+</span>
+          <strong>Tu rutina todavía está vacía</strong>
+          <small>Selecciona un ejercicio debajo para añadirlo.</small>
+        </div>
+      }
+    </div>
+
+    <div class="add-exercise-row">
+      <select [(ngModel)]="selectedExerciseId" aria-label="Ejercicio">
+        <option value="">Selecciona un ejercicio...</option>
+        @for (exercise of exercises.all(); track exercise.id) {
+          <option [value]="exercise.id">{{ exercise.name }} · {{ exercise.muscle }}</option>
+        }
+      </select>
+      <button class="button button-small button-primary" type="button" (click)="addExercise()" [disabled]="!selectedExerciseId">+ Añadir ejercicio</button>
+    </div>
+
+    <div class="modal-note"><span>*</span><p>El peso y las repeticiones reales se guardan al comenzar una sesión.</p></div>
+
+    <div class="modal-actions">
+      <button class="button button-outline" type="button" (click)="step.set('details')">&lt;- Revisar datos</button>
+      <button class="button button-primary" type="button" (click)="save()" [disabled]="saving() || !draft().name.trim()">
+        {{ saving() ? 'Guardando...' : 'Guardar rutina' }}
+      </button>
+    </div>
+  }
+</dracox-modal>

@@ -1,11 +1,11 @@
 -- Run after 0004_flexible_routines.sql.
+-- get_my_routine_days is removed by 0009 and checked there.
 
 do $$
 declare
   expected_function text;
   expected_functions constant text[] := array[
     'create_routine_program',
-    'get_my_routine_days',
     'archive_routine',
     'unarchive_routine',
     'get_my_workout_history'

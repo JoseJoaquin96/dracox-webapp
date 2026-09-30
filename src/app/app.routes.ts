@@ -1,46 +1,30 @@
 import { Routes } from '@angular/router';
-import { adminGuard, authGuard, guestGuard } from './auth.guard';
+import { adminGuard, authGuard, guestGuard } from './core/auth/auth.guards';
+import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
   {
     path: 'login',
     canActivate: [guestGuard],
-    loadComponent: () => import('./pages/login.component').then((module) => module.LoginComponent)
+    loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent)
   },
   {
-    canActivate: [authGuard],
     path: '',
-    loadComponent: () => import('./pages/dashboard.component').then((module) => module.DashboardComponent)
-  },
-  {
+    component: ShellComponent,
     canActivate: [authGuard],
-    path: 'routines',
-    loadComponent: () => import('./pages/routines.component').then((module) => module.RoutinesComponent)
-  },
-  {
-    canActivate: [authGuard],
-    path: 'workout/:routineId/:routineDayId',
-    loadComponent: () => import('./pages/workout.component').then((module) => module.WorkoutComponent)
-  },
-  {
-    canActivate: [authGuard],
-    path: 'workout/:routineId',
-    loadComponent: () => import('./pages/workout.component').then((module) => module.WorkoutComponent)
-  },
-  {
-    canActivate: [authGuard],
-    path: 'progress',
-    loadComponent: () => import('./pages/progress.component').then((module) => module.ProgressComponent)
-  },
-  {
-    canActivate: [authGuard],
-    path: 'exercises',
-    loadComponent: () => import('./pages/exercises.component').then((module) => module.ExercisesComponent)
-  },
-  {
-    canActivate: [authGuard, adminGuard],
-    path: 'admin/errors',
-    loadComponent: () => import('./pages/admin-errors.component').then((module) => module.AdminErrorsComponent)
+    children: [
+      { path: '', loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent) },
+      { path: 'routines', loadComponent: () => import('./features/routines/routines.component').then((m) => m.RoutinesComponent) },
+      { path: 'workout/:routineId/:routineDayId', loadComponent: () => import('./features/workout/workout.component').then((m) => m.WorkoutComponent) },
+      { path: 'workout/:routineId', loadComponent: () => import('./features/workout/workout.component').then((m) => m.WorkoutComponent) },
+      { path: 'progress', loadComponent: () => import('./features/progress/progress.component').then((m) => m.ProgressComponent) },
+      { path: 'exercises', loadComponent: () => import('./features/exercises/exercises.component').then((m) => m.ExercisesComponent) },
+      {
+        path: 'admin/errors',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/admin-errors/admin-errors.component').then((m) => m.AdminErrorsComponent)
+      }
+    ]
   },
   { path: '**', redirectTo: '' }
 ];

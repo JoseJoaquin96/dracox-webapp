@@ -1,0 +1,68 @@
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" routerLink="/" aria-label="Dracox inicio">
+      <span class="brand-mark">D</span>
+      <span><strong>dracox</strong><small>TRAINING OS</small></span>
+    </a>
+
+    <div class="sidebar-label">Espacio personal</div>
+    <nav class="main-nav" aria-label="Navegación principal">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="nav-icon">⌂</span> Hoy</a>
+      <a routerLink="/routines" routerLinkActive="active"><span class="nav-icon">▦</span> Rutinas</a>
+      <a routerLink="/progress" routerLinkActive="active"><span class="nav-icon">◔</span> Progreso</a>
+      <a routerLink="/exercises" routerLinkActive="active"><span class="nav-icon">✦</span> Ejercicios</a>
+      @if (auth.isAdmin()) {
+        <a routerLink="/admin/errors" routerLinkActive="active"><span class="nav-icon">!</span> Admin</a>
+      }
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="mini-profile">
+        <span class="avatar">{{ auth.userInitial() }}</span>
+        <span><strong>{{ auth.userName() }}</strong><small>Modo personal</small></span>
+        <span class="status-dot"></span>
+      </div>
+      <div class="sidebar-tip">
+        <span class="tip-icon">✳</span>
+        <span><strong>Tu progreso, tu ritmo</strong><small>La constancia gana.</small></span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="mobile-brand"><span class="brand-mark">D</span><strong>dracox</strong></div>
+      <div class="topbar-actions">
+        <span class="sync-pill"><i></i> {{ syncLabel() }}</span>
+        <button class="avatar avatar-button" type="button" (click)="signOut()" aria-label="Cerrar sesión" title="Cerrar sesión">
+          {{ auth.userInitial() }}
+        </button>
+      </div>
+    </header>
+
+    @if (status.loading()) {
+      <div class="app-status app-status-loading" role="status">Sincronizando datos…</div>
+    }
+    @if (status.error(); as error) {
+      <div class="app-status app-status-error" role="alert">
+        <span>{{ error }}</span>
+        <button type="button" (click)="status.clearError()" aria-label="Cerrar aviso">×</button>
+      </div>
+    }
+    @if (pendingCount(); as count) {
+      <div class="app-status app-status-pending" role="status">
+        {{ count }} {{ plural(count, 'cambio') }} {{ plural(count, 'pendiente') }} de sincronizar.
+      </div>
+    }
+
+    <div class="page-container"><router-outlet /></div>
+  </main>
+
+  <nav class="mobile-nav" aria-label="Navegación móvil">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span>⌂</span>Hoy</a>
+    <a routerLink="/routines" routerLinkActive="active"><span>▦</span>Rutinas</a>
+    <a class="mobile-action" routerLink="/routines" aria-label="Rutinas"><span>＋</span></a>
+    <a routerLink="/progress" routerLinkActive="active"><span>◔</span>Progreso</a>
+    <a routerLink="/exercises" routerLinkActive="active"><span>✦</span>Más</a>
+  </nav>
+</div>

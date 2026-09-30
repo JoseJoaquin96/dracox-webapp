@@ -1,11 +1,10 @@
 -- Run after 0002_basic_workout_api.sql as a database owner.
+-- get_my_routines and create_routine are removed by 0009 and checked there.
 
 do $$
 declare
   expected_function text;
   expected_functions constant text[] := array[
-    'get_my_routines',
-    'create_routine',
     'start_workout',
     'update_workout_set',
     'finish_workout'
@@ -22,14 +21,6 @@ begin
       raise exception 'Missing public function: %', expected_function;
     end if;
   end loop;
-
-  if has_function_privilege('anon', 'public.create_routine(text,text,text,integer,text,jsonb)', 'execute') then
-    raise exception 'Anonymous users must not execute create_routine';
-  end if;
-
-  if not has_function_privilege('authenticated', 'public.create_routine(text,text,text,integer,text,jsonb)', 'execute') then
-    raise exception 'Authenticated users must execute create_routine';
-  end if;
 
   if not has_function_privilege('authenticated', 'public.update_workout_set(uuid,numeric,integer,boolean)', 'execute') then
     raise exception 'Authenticated users must execute update_workout_set';

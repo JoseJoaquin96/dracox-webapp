@@ -1,0 +1,64 @@
+<div class="page-heading compact-heading">
+  <div>
+    <p class="eyebrow">Tu biblioteca</p>
+    <h1>Encuentra tu <em>movimiento.</em></h1>
+    <p class="heading-subtitle">Una biblioteca clara para que cada ejercicio tenga su propio historial.</p>
+  </div>
+  <button class="button button-primary" type="button" (click)="formOpen.set(true)">+ Crear ejercicio</button>
+</div>
+
+<div class="exercise-toolbar">
+  <label class="search-field"><span>Buscar</span>
+    <input placeholder="Buscar ejercicio..." [ngModel]="query()" (ngModelChange)="query.set($event)">
+  </label>
+  <div class="exercise-filters">
+    @for (filter of muscleFilters(); track filter) {
+      <button class="filter-button" type="button" [class.active]="muscleFilter() === filter" (click)="muscleFilter.set(filter)">{{ filter }}</button>
+    }
+  </div>
+</div>
+
+<section class="exercise-library">
+  @for (exercise of filtered(); track exercise.id) {
+    <article class="exercise-library-card surface-card">
+      <span class="exercise-avatar" [style.background]="exercise.color">{{ exercise.initials }}</span>
+      <div class="exercise-copy">
+        <h2>{{ exercise.name }}</h2>
+        <p>{{ exercise.muscle }} <span>·</span> {{ exercise.equipment }}</p>
+      </div>
+      <span class="exercise-kind">{{ kindLabels[exercise.kind] }}</span>
+    </article>
+  } @empty {
+    <div class="progress-empty">
+      <span>◌</span><strong>No hay ejercicios que coincidan</strong><small>Prueba con otra búsqueda o crea uno nuevo.</small>
+    </div>
+  }
+</section>
+
+@if (formOpen()) {
+  <dracox-modal eyebrow="Biblioteca personal" heading="Crea tu movimiento." (closed)="formOpen.set(false)">
+    <label class="field-label">Nombre
+      <input maxlength="80" placeholder="Ej. Press inclinado en máquina" [(ngModel)]="draft.name">
+    </label>
+    <label class="field-label">Grupo muscular
+      <input maxlength="40" list="muscle-options" placeholder="Ej. Pecho" [(ngModel)]="draft.muscle">
+    </label>
+    <datalist id="muscle-options">
+      @for (muscle of exercises.muscles(); track muscle) { <option [value]="muscle"></option> }
+    </datalist>
+    <label class="field-label">Equipamiento
+      <input maxlength="40" placeholder="Ej. Máquina" [(ngModel)]="draft.equipment">
+    </label>
+    <label class="field-label">Tipo
+      <select [(ngModel)]="draft.kind">
+        @for (kind of kinds; track kind) { <option [value]="kind">{{ kindLabels[kind] }}</option> }
+      </select>
+    </label>
+    <div class="modal-actions">
+      <button class="button button-outline" type="button" (click)="formOpen.set(false)">Cancelar</button>
+      <button class="button button-primary" type="button" (click)="create()" [disabled]="saving() || !draft.name.trim()">
+        {{ saving() ? 'Guardando...' : 'Guardar ejercicio' }}
+      </button>
+    </div>
+  </dracox-modal>
+}

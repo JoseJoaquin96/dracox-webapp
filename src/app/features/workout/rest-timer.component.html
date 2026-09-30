@@ -1,0 +1,12 @@
+<article class="timer-card surface-card">
+  <span class="eyebrow">Descanso</span>
+  <strong role="timer" aria-live="off">{{ label() }}</strong>
+  <p>{{ running() ? 'Recupera lo suficiente. Vuelve más fuerte.' : 'Se inicia solo al completar una serie.' }}</p>
+  <div class="timer-actions">
+    <button type="button" (click)="adjust(-15)">- 15s</button>
+    <button type="button" class="timer-main" (click)="toggle()">
+      {{ running() ? 'Pausar' : remaining() > 0 ? 'Continuar' : 'Iniciar' }}
+    </button>
+    <button type="button" (click)="adjust(15)">+ 15s</button>
+  </div>
+</article>
