@@ -1,16 +1,20 @@
+import { CdkScrollable } from '@angular/cdk/scrolling';
 import { Component, DestroyRef, ElementRef, afterNextRender, inject, input, output } from '@angular/core';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
 
 @Component({
   selector: 'dracox-modal',
+  // CdkScrollable lets drag and drop auto-scroll long modals.
+  imports: [CdkScrollable],
   host: {
     '(document:keydown.escape)': 'closed.emit()',
     '(keydown)': 'keepFocusInside($event)'
   },
   template: `
-    <div class="modal-backdrop" (click)="closed.emit()">
-      <section class="modal-card" [class]="panelClass()" role="dialog" aria-modal="true" [attr.aria-label]="heading()" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop" (pointerdown)="pressedBackdrop = $event.target === $event.currentTarget"
+         (click)="pressedBackdrop && $event.target === $event.currentTarget && closed.emit()">
+      <section class="modal-card" cdkScrollable [class]="panelClass()" role="dialog" aria-modal="true" [attr.aria-label]="heading()">
         <div class="modal-heading">
           <div>
             <span class="eyebrow">{{ eyebrow() }}</span>
@@ -29,6 +33,8 @@ export class ModalComponent {
   readonly panelClass = input('');
   readonly closed = output<void>();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  // Avoids closing when a drag or text selection that started inside ends on the backdrop.
+  pressedBackdrop = false;
 
   constructor() {
     const previouslyFocused = document.activeElement as HTMLElement | null;

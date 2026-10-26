@@ -1,30 +1,56 @@
 <div class="page-heading dashboard-heading">
   <div>
     <p class="eyebrow">{{ dateLabel }}</p>
-    <h1>Entrena con intención, <em>{{ auth.userName() }}.</em></h1>
-    <p class="heading-subtitle">Tu próximo paso no tiene que ser perfecto. Solo tiene que ser el siguiente.</p>
+    <h1>Hola, <em>{{ auth.userName() }}.</em></h1>
   </div>
   <a class="button button-primary heading-cta" [routerLink]="startLink()">
-    {{ nextRoutine() ? 'Comenzar entrenamiento' : 'Crear rutina' }} <span>↗</span>
+    {{ activeSession() ? 'Continuar sesión' : nextRoutine() ? 'Empezar entrenamiento' : 'Crear rutina' }} <span>↗</span>
   </a>
 </div>
 
 <section class="hero-grid">
   <article class="next-session-card surface-card">
-    <div class="card-topline"><span class="card-kicker"><span class="pulse-dot"></span> Próxima sesión</span></div>
-    @if (nextRoutine(); as routine) {
+    <div class="card-topline">
+      <span class="card-kicker"><span class="pulse-dot"></span> {{ activeSession() ? 'Sesión en curso' : 'Te toca' }}</span>
+      @if (!activeSession() && nextDayLastDone(); as lastDone) { <span class="calendar-month">Última vez · {{ lastDone }}</span> }
+    </div>
+    @if (activeSession(); as active) {
       <div class="next-session-content">
         <div>
-          <span class="routine-pill" [style.color]="routine.color">{{ routine.daysLabel }}</span>
-          <h2>{{ routine.name }}</h2>
+          <span class="routine-pill live-pill"><i></i> En marcha</span>
+          <h2>{{ active.dayName ?? active.name }}</h2>
+          <p>{{ active.name }}</p>
+        </div>
+        <div class="session-orb"><span>{{ active.exercises.length }}</span><small>ejercicios</small></div>
+      </div>
+      <a class="card-action" [routerLink]="startLink()">Continuar sesión <span>→</span></a>
+    } @else if (nextRoutine(); as routine) {
+      @let day = nextDay();
+      <div class="next-session-content">
+        <div>
+          <span class="routine-pill" [style.color]="routine.color">{{ routine.name }}</span>
+          <h2>{{ day?.name ?? routine.name }}</h2>
           <p>{{ routine.focus }}</p>
         </div>
-        <div class="session-orb"><span>{{ routineExercises(routine).length }}</span><small>bloques</small></div>
+        <div class="session-orb"><span>{{ day?.exercises?.length ?? 0 }}</span><small>ejercicios</small></div>
       </div>
+      @if (day && day.exercises.length) {
+        <ul class="next-exercise-list">
+          @for (planned of day.exercises.slice(0, previewCount); track $index) {
+            <li>
+              <span>{{ exercises.byId(planned.exerciseId)?.name ?? 'Ejercicio' }}</span>
+              <small>{{ planned.sets }} × {{ planned.repRange }}</small>
+            </li>
+          }
+          @if (day.exercises.length > previewCount) {
+            <li class="more">+ {{ day.exercises.length - previewCount }} más</li>
+          }
+        </ul>
+      }
       <div class="session-meta">
         <span>◷ {{ routine.duration }} min</span>
-        <span>▤ {{ plannedSets(routine) }} series</span>
-        <span>◌ {{ routine.days.length }} {{ plural(routine.days.length, 'día') }}</span>
+        <span>▤ {{ nextDaySets() }} series</span>
+        @if (day) { <span>◌ Día {{ routine.days.indexOf(day) + 1 }} de {{ routine.days.length }}</span> }
       </div>
       <a class="card-action" [routerLink]="startLink()">Ver sesión <span>→</span></a>
     } @else {
@@ -34,83 +60,65 @@
           <h2>Nueva rutina</h2>
           <p>Empieza a diseñar tu semana</p>
         </div>
-        <div class="session-orb"><span>0</span><small>bloques</small></div>
+        <div class="session-orb"><span>0</span><small>ejercicios</small></div>
       </div>
       <a class="card-action" routerLink="/routines">Crear rutina <span>→</span></a>
     }
   </article>
 
-  <article class="quote-card surface-card">
-    <span class="quote-mark">“</span>
-    <p>La disciplina es elegir entre lo que quieres ahora y lo que más quieres.</p>
-    <div class="quote-footer"><span class="quote-line"></span><small>Tu recordatorio de hoy</small></div>
-  </article>
-</section>
-
-<section class="stats-grid">
-  <article class="metric-card surface-card">
-    <div class="metric-label">
-      <span class="metric-icon lime">↗</span><span>Volumen esta semana</span>
-      <span class="trend positive">{{ weekSessions().length }} sesiones</span>
+  <article class="week-card surface-card">
+    <div class="section-heading">
+      <div><span class="eyebrow">Resumen</span><h3>Esta semana</h3></div>
+      <span class="calendar-month">vs. semana pasada</span>
     </div>
-    <strong>{{ formatNumber(weekVolume()) }} <small>kg</small></strong>
-    <div class="mini-sparkline">
-      @for (day of week(); track day.label) {
-        <i [class.today]="day.isToday" [style.height.%]="percent(day.volume, maxDayVolume())"></i>
-      }
+    <div class="week-stats">
+      <div class="week-stat">
+        <span>Sesiones</span>
+        <strong>{{ thisWeek().sessions }}</strong>
+        <small>{{ lastWeek().sessions }} la anterior</small>
+      </div>
+      <div class="week-stat">
+        <span>Series</span>
+        <strong>{{ thisWeek().sets }}</strong>
+        <small>{{ lastWeek().sets }} la anterior</small>
+      </div>
+      <div class="week-stat">
+        <span>Volumen</span>
+        <strong>{{ formatNumber(thisWeek().volume) }} <small>kg</small></strong>
+        <small>{{ formatNumber(lastWeek().volume) }} kg la anterior</small>
+      </div>
+      <div class="week-stat">
+        <span>Tiempo</span>
+        <strong>{{ thisWeek().minutes }} <small>min</small></strong>
+        <small>{{ lastWeek().minutes }} min la anterior</small>
+      </div>
     </div>
-    <small class="metric-foot">Calculado desde tus series completadas</small>
-  </article>
-
-  <article class="metric-card surface-card">
-    <div class="metric-label">
-      <span class="metric-icon violet">◷</span><span>Tiempo entrenado</span>
-      <span class="trend positive">{{ weekSessions().length }} sesiones</span>
-    </div>
-    <strong>{{ weekMinutes() }} <small>min</small></strong>
-    <div class="mini-sparkline violet-spark">
-      @for (day of week(); track day.label) {
-        <i [class.today]="day.isToday" [style.height.%]="percent(day.minutes, maxDayMinutes())"></i>
-      }
-    </div>
-    <small class="metric-foot">Solo cuenta sesiones finalizadas esta semana</small>
-  </article>
-
-  <article class="metric-card surface-card streak-card">
-    <div class="metric-label">
-      <span class="metric-icon orange">✦</span><span>Racha actual</span>
-      <span class="trend neutral">Días seguidos</span>
-    </div>
-    <strong>{{ streak() }} <small>{{ plural(streak(), 'día') }}</small></strong>
-    <div class="streak-dots">
-      @for (dot of streakDots; track dot) {
-        <i [class.filled]="dot < streak()" [class.current]="dot === streak() - 1"></i>
-      }
-    </div>
-    <small class="metric-foot">Un día cada vez</small>
   </article>
 </section>
 
 <section class="content-grid two-column-grid">
   <article class="surface-card chart-card">
     <div class="section-heading">
-      <div><span class="eyebrow">Ritmo semanal</span><h3>Actividad de entrenamiento</h3></div>
-      <span class="calendar-month">Esta semana</span>
-    </div>
-    <div class="chart-area">
-      <div class="y-axis">
-        @for (tick of yTicks(); track $index) { <span>{{ tick }}</span> }
-      </div>
-      <div class="bars">
-        @for (day of week(); track day.label) {
-          <div class="bar-column">
-            <i class="bar" [class.light]="!day.sessions" [class.today]="day.isToday"
-               [style.height.%]="percent(day.sessions, chartMax())" [attr.title]="day.sessions + ' sesiones'"></i>
-            <span>{{ day.label }}</span>
-          </div>
-        }
+      <div><span class="eyebrow">{{ weekOffset() === 0 ? 'Esta semana' : weekOffset() === -1 ? 'Semana pasada' : 'Semana' }}</span><h3>Actividad de entrenamiento</h3></div>
+      <div class="period-nav">
+        <button type="button" (click)="moveWeek(-1)" aria-label="Semana anterior">‹</button>
+        <span>{{ weekRangeLabel() }}</span>
+        <button type="button" (click)="moveWeek(1)" [disabled]="weekOffset() === 0" aria-label="Semana siguiente">›</button>
       </div>
     </div>
+    <div class="week-calendar">
+      @for (day of week(); track day.key) {
+        <button type="button" class="week-day" [class.done]="day.sessions" [class.today]="day.isToday" [disabled]="!day.sessions"
+                [attr.aria-label]="day.sessions ? 'Ver entrenamiento del ' + day.label + ' ' + day.date : null"
+                (click)="detail.set(day.sessionsOfDay)">
+          <i class="week-day-fill" [style.height.%]="day.sessions ? 18 + percent(day.volume, maxDayVolume()) * 0.82 : 0"></i>
+          <span>{{ day.label }}</span>
+          <strong>{{ day.date }}</strong>
+          <small>{{ day.sessionsOfDay[0]?.dayName ?? day.sessionsOfDay[0]?.name ?? '' }}</small>
+        </button>
+      }
+    </div>
+    <p class="metric-foot week-calendar-hint">Pulsa un día entrenado para ver ejercicios, pesos y repeticiones.</p>
   </article>
 
   <article class="surface-card muscle-card">
@@ -139,15 +147,15 @@
   </div>
   <div class="recent-list">
     @for (session of recentSessions(); track session.id) {
-      <div class="recent-item">
+      <button type="button" class="recent-item" (click)="detail.set([session])">
         <span class="recent-avatar push">{{ session.name.slice(0, 1) }}</span>
         <div>
-          <strong>{{ session.name }}</strong>
-          <small>{{ sessionDate(session) }} · {{ session.durationMinutes ?? 0 }} min · Sesión completada</small>
+          <strong>{{ session.name }}@if (session.dayName && session.dayName !== session.name) { · {{ session.dayName }} }</strong>
+          <small>{{ sessionDate(session) }} · {{ session.durationMinutes ?? 0 }} min · {{ session.exercises.length }} {{ plural(session.exercises.length, 'ejercicio') }}</small>
         </div>
         <span class="recent-volume">{{ formatNumber(volume(session)) }} kg</span>
-        <span class="recent-check">✓</span>
-      </div>
+        <span class="recent-chevron" aria-hidden="true">›</span>
+      </button>
     } @empty {
       <div class="dashboard-empty-history">
         <span>◌</span>
@@ -157,3 +165,7 @@
     }
   </div>
 </section>
+
+@if (detail(); as sessions) {
+  <dracox-session-detail [sessions]="sessions" (closed)="detail.set(null)" />
+}

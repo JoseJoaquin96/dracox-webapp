@@ -63,11 +63,14 @@
       <span>{{ day().exercises.length }} bloques</span>
     </div>
 
-    <div class="editor-exercise-list">
-      @for (planned of day().exercises; track $index; let index = $index, first = $first, last = $last) {
+    <div class="editor-exercise-list" cdkDropList cdkDropListLockAxis="y" (cdkDropListDropped)="dropExercise($event)">
+      @for (planned of day().exercises; track $index; let index = $index) {
         @let exercise = exercises.byId(planned.exerciseId);
-        <div class="editor-exercise-row">
-          <span class="editor-exercise-number">{{ formatPosition(index) }}</span>
+        <div class="editor-exercise-row" cdkDrag cdkDragBoundary=".editor-exercise-list">
+          <button class="drag-handle" type="button" cdkDragHandle aria-label="Arrastrar para reordenar">
+            <span class="editor-exercise-number">{{ formatPosition(index) }}</span>
+            <i aria-hidden="true"></i>
+          </button>
           <div class="editor-exercise-name">
             <strong>{{ exercise?.name ?? 'Ejercicio eliminado' }}</strong>
             <small>{{ exercise ? exercise.muscle + ' - ' + exercise.equipment : 'Sin datos' }}</small>
@@ -83,8 +86,6 @@
             <small>s</small>
           </label>
           <div class="editor-row-actions">
-            <button class="row-icon" type="button" (click)="moveExercise(index, -1)" [disabled]="first" aria-label="Subir ejercicio">^</button>
-            <button class="row-icon" type="button" (click)="moveExercise(index, 1)" [disabled]="last" aria-label="Bajar ejercicio">v</button>
             <button class="row-icon danger" type="button" (click)="removeExercise(index)" aria-label="Eliminar ejercicio">x</button>
           </div>
         </div>

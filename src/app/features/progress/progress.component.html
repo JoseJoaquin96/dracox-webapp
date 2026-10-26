@@ -2,7 +2,6 @@
   <div>
     <p class="eyebrow">Datos que cuentan</p>
     <h1>Tu progreso, <em>en perspectiva.</em></h1>
-    <p class="heading-subtitle">No busques días perfectos. Busca tendencias que se mueven en la dirección correcta.</p>
   </div>
 </div>
 
@@ -28,7 +27,6 @@
   <article class="highlight-side surface-card">
     <span class="eyebrow">Series completadas</span>
     <strong>{{ summary().completedSets }} <small>series</small></strong>
-    <p>Tu historial crece cada vez que registras y finalizas una sesión.</p>
     <a class="text-link" href="#records">Ver historial →</a>
   </article>
 </section>
@@ -61,21 +59,29 @@
 
   <article class="surface-card chart-card">
     <div class="section-heading">
-      <div><span class="eyebrow">Constancia</span><h3>Calendario de sesiones</h3></div>
-      <span class="calendar-month">{{ currentMonth }}</span>
+      <div><span class="eyebrow">Calendario</span><h3>Sesiones del mes</h3></div>
+      <div class="period-nav">
+        <button type="button" (click)="moveMonth(-1)" aria-label="Mes anterior">‹</button>
+        <span>{{ monthLabel() }}</span>
+        <button type="button" (click)="moveMonth(1)" [disabled]="monthOffset() === 0" aria-label="Mes siguiente">›</button>
+      </div>
     </div>
     <div class="calendar">
       <div class="calendar-head">
         @for (initial of weekdayInitials; track $index) { <span>{{ initial }}</span> }
       </div>
       <div class="calendar-days">
-        @for (day of calendar(); track $index) {
-          <span [class.done]="day.trained" [class.muted]="!day.inMonth">{{ day.label }}</span>
+        @for (day of calendar(); track day.key) {
+          @if (day.trained) {
+            <button type="button" class="done" [attr.aria-label]="'Ver entrenamiento del día ' + day.label" (click)="openDay(day.key)">{{ day.label }}</button>
+          } @else {
+            <span [class.muted]="!day.inMonth">{{ day.label }}</span>
+          }
         }
       </div>
     </div>
     <div class="calendar-legend">
-      <span><i class="legend-dot done"></i>Entrenamiento</span>
+      <span><i class="legend-dot done"></i>Entrenamiento (pulsa para ver)</span>
       <span><i class="legend-dot"></i>Descanso</span>
     </div>
   </article>
@@ -116,14 +122,15 @@
     <span class="calendar-month">{{ summary().sessions }} sesiones</span>
   </div>
   @for (session of history.sessions(); track session.id) {
-    <div class="record-item session-history-row">
+    <button type="button" class="record-item session-history-row" (click)="detail.set([session])">
       <span class="record-icon">✓</span>
       <div>
-        <strong>{{ session.name }}</strong>
+        <strong>{{ session.name }}@if (session.dayName && session.dayName !== session.name) { · {{ session.dayName }} }</strong>
         <small>{{ sessionDate(session) }} · {{ session.durationMinutes ?? 0 }} min · {{ formatNumber(volume(session)) }} kg de volumen</small>
       </div>
       <b>{{ session.exercises.length }} ejercicios</b>
-    </div>
+      <span class="recent-chevron" aria-hidden="true">›</span>
+    </button>
   } @empty {
     <div class="progress-empty history-empty">
       <span>◌</span><strong>Tu historial aparecerá aquí</strong><small>Finaliza tu primera sesión para empezar a medir tu progreso.</small>
@@ -133,3 +140,7 @@
     <button class="full-width-link" type="button" (click)="history.loadMore()">Cargar sesiones anteriores <span>↓</span></button>
   }
 </section>
+
+@if (detail(); as sessions) {
+  <dracox-session-detail [sessions]="sessions" (closed)="detail.set(null)" />
+}

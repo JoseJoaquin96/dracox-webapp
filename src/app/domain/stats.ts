@@ -1,4 +1,4 @@
-import { ExerciseKind, ProgressSummary, Routine, RoutineExercise, WorkoutSession, WorkoutSet } from './models';
+import { ExerciseKind, ProgressSummary, Routine, RoutineDay, RoutineExercise, WorkoutSession, WorkoutSet } from './models';
 
 export const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -11,7 +11,9 @@ export const SET_FIELDS: Record<ExerciseKind, { weight: string | null; reps: str
 };
 
 export interface DayActivity {
+  key: string;
   label: string;
+  date: number;
   sessions: number;
   volume: number;
   minutes: number;
@@ -24,6 +26,7 @@ export interface MuscleSets {
 }
 
 export interface CalendarDay {
+  key: string;
   label: number;
   inMonth: boolean;
   trained: boolean;
@@ -73,34 +76,34 @@ export function sessionVolume(session: WorkoutSession): number {
     .reduce((sum, set) => set.completed && set.weight !== null && set.reps !== null ? sum + set.weight * set.reps : sum, 0);
 }
 
+export function completedSetCount(session: WorkoutSession): number {
+  return session.exercises.reduce((sum, exercise) => sum + exercise.sets.filter((set) => set.completed).length, 0);
+}
+
 /** Epley formula. */
 export function estimatedOneRepMax(weight: number, reps: number): number {
   return reps <= 1 ? weight : Math.round(weight * (1 + reps / 30));
 }
 
-// Consecutive days with a workout, ending today or yesterday (today may still be pending).
-export function currentStreak(trainingDays: Iterable<string>, now: Date): number {
-  const days = new Set(trainingDays);
-  const cursor = new Date(now);
-  if (!days.has(localDayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
-  let streak = 0;
-  while (days.has(localDayKey(cursor))) {
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
+/** The day after the last one trained in this routine (wrapping around), or the first one. */
+export function nextRoutineDay(routine: Routine, sessions: WorkoutSession[]): RoutineDay | null {
+  const last = sessions.find((session) => session.routineId === routine.id);
+  const index = routine.days.findIndex((day) => day.id === last?.routineDayId);
+  return routine.days[(index + 1) % routine.days.length] ?? null;
 }
 
-export function weekActivity(sessions: WorkoutSession[], now: Date): DayActivity[] {
+export function weekActivity(sessions: WorkoutSession[], now: Date, today: Date = now): DayActivity[] {
   const monday = startOfWeek(now);
-  const todayKey = localDayKey(now);
+  const todayKey = localDayKey(today);
   return WEEKDAY_LABELS.map((label, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
     const key = localDayKey(date);
     const daySessions = sessions.filter((session) => localDayKey(sessionTimestamp(session)) === key);
     return {
+      key,
       label,
+      date: date.getDate(),
       sessions: daySessions.length,
       volume: daySessions.reduce((sum, session) => sum + sessionVolume(session), 0),
       minutes: daySessions.reduce((sum, session) => sum + (session.durationMinutes ?? 0), 0),
@@ -132,7 +135,8 @@ export function monthCalendar(trainingDays: Iterable<string>, now: Date): Calend
   return Array.from({ length: Math.ceil((offset + daysInMonth) / 7) * 7 }, (_, index) => {
     const date = new Date(year, month, index - offset + 1);
     const inMonth = date.getMonth() === month;
-    return { label: date.getDate(), inMonth, trained: inMonth && trained.has(localDayKey(date)) };
+    const key = localDayKey(date);
+    return { key, label: date.getDate(), inMonth, trained: inMonth && trained.has(key) };
   });
 }
 

@@ -12,7 +12,7 @@ export class RestTimerComponent {
   private readonly now = signal(Date.now());
   private readonly endsAt = signal<number | null>(null);
   private readonly pausedSeconds = signal(0);
-  private lastDuration = DEFAULT_REST_SECONDS;
+  private readonly duration = signal(DEFAULT_REST_SECONDS);
 
   readonly running = computed(() => this.endsAt() !== null);
   readonly remaining = computed(() => {
@@ -20,6 +20,7 @@ export class RestTimerComponent {
     return endsAt === null ? this.pausedSeconds() : Math.max(0, Math.ceil((endsAt - this.now()) / 1000));
   });
   readonly label = computed(() => formatClock(this.remaining()));
+  readonly percent = computed(() => Math.min(100, this.remaining() / this.duration() * 100));
 
   constructor() {
     const timer = setInterval(() => this.tick(), 1000);
@@ -28,17 +29,18 @@ export class RestTimerComponent {
 
   start(seconds: number): void {
     if (seconds <= 0) return;
-    this.lastDuration = seconds;
-    this.now.set(Date.now());
-    this.endsAt.set(Date.now() + seconds * 1000);
+    this.duration.set(seconds);
+    this.resume(seconds);
   }
 
   toggle(): void {
     if (this.running()) {
       this.pausedSeconds.set(this.remaining());
       this.endsAt.set(null);
+    } else if (this.remaining() > 0) {
+      this.resume(this.remaining());
     } else {
-      this.start(this.remaining() || this.lastDuration);
+      this.start(this.duration());
     }
   }
 
@@ -46,6 +48,11 @@ export class RestTimerComponent {
     const endsAt = this.endsAt();
     if (endsAt === null) this.pausedSeconds.update((value) => Math.max(0, value + seconds));
     else this.endsAt.set(Math.max(Date.now(), endsAt + seconds * 1000));
+  }
+
+  private resume(seconds: number): void {
+    this.now.set(Date.now());
+    this.endsAt.set(Date.now() + seconds * 1000);
   }
 
   private tick(): void {

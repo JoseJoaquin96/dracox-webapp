@@ -3204,6 +3204,44 @@ a.mini-profile {
 .week-calendar-hint {
   margin: 16px 0 0;
 }
+.period-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font:
+    10px "DM Mono",
+    monospace;
+  white-space: nowrap;
+}
+.period-nav span {
+  min-width: 96px;
+  text-align: center;
+}
+.period-nav button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.period-nav button:hover:not(:disabled) {
+  color: var(--lime);
+  border-color: rgba(216, 243, 106, 0.4);
+}
+.period-nav button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
 
 /* Session detail */
 .session-detail-modal {

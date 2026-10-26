@@ -1,3 +1,4 @@
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Routine, RoutineDay, RoutineDraft, RoutineExercise } from '../../domain/models';
@@ -10,7 +11,7 @@ const NEW_EXERCISE: Omit<RoutineExercise, 'exerciseId'> = { sets: 3, repRange: '
 
 @Component({
   selector: 'dracox-routine-editor',
-  imports: [FormsModule, ModalComponent],
+  imports: [FormsModule, ModalComponent, CdkDropList, CdkDrag, CdkDragHandle],
   templateUrl: './routine-editor.component.html'
 })
 export class RoutineEditorComponent {
@@ -67,10 +68,11 @@ export class RoutineEditorComponent {
     this.updateExercises((exercises) => exercises.filter((_, itemIndex) => itemIndex !== index));
   }
 
-  moveExercise(index: number, offset: -1 | 1): void {
+  dropExercise(event: CdkDragDrop<RoutineExercise[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
     this.updateExercises((exercises) => {
       const copy = [...exercises];
-      [copy[index], copy[index + offset]] = [copy[index + offset], copy[index]];
+      moveItemInArray(copy, event.previousIndex, event.currentIndex);
       return copy;
     });
   }
