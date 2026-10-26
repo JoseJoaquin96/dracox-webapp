@@ -793,8 +793,31 @@ h1 em {
   display: flex;
   align-items: center;
   gap: 13px;
+  width: 100%;
   min-height: 66px;
+  padding: 0;
+  border: 0;
   border-top: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+button.recent-item:hover,
+button.session-history-row:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+.recent-chevron {
+  color: var(--muted-2);
+  font-size: 18px;
+  line-height: 1;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+button:hover > .recent-chevron {
+  color: var(--lime);
+  transform: translateX(2px);
 }
 .recent-avatar {
   width: 31px;
@@ -1380,8 +1403,31 @@ h1 em {
   top: 24px;
 }
 .timer-card {
+  position: relative;
+  overflow: hidden;
   padding: 23px;
   text-align: center;
+  transition: border-color 0.2s ease;
+}
+.timer-card.running {
+  border-color: rgba(216, 243, 106, 0.4);
+}
+.timer-card.running strong {
+  color: var(--lime);
+}
+.timer-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.timer-bar i {
+  display: block;
+  height: 100%;
+  background: var(--lime);
+  transition: width 1s linear;
 }
 .timer-card strong {
   display: block;
@@ -1685,19 +1731,31 @@ h1 em {
     monospace;
   margin-bottom: 9px;
 }
-.calendar-days span {
+.calendar-days > * {
   display: grid;
   place-items: center;
   height: 27px;
+  padding: 0;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   color: var(--muted);
   font:
     9px "DM Mono",
     monospace;
 }
-.calendar-days span.done {
+.calendar-days .done {
   color: #10150c;
   background: var(--lime);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.calendar-days button.done:hover,
+.calendar-days button.done:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(216, 243, 106, 0.25);
+  outline: 0;
 }
 .calendar-days span.muted {
   color: var(--muted-2);
@@ -1803,9 +1861,13 @@ h1 em {
   font-size: 9px;
 }
 .session-history-row {
+  width: 100%;
+  border: 0;
   border-radius: 0;
   border-top: 1px solid var(--line);
   background: transparent;
+  color: inherit;
+  text-align: left;
   padding: 13px 0;
 }
 .history-empty {
@@ -2744,7 +2806,7 @@ body {
       "sets sets reps rest rest";
     gap: 8px 7px;
   }
-  .editor-exercise-row .editor-exercise-number {
+  .editor-exercise-row .drag-handle {
     grid-area: number;
   }
   .editor-exercise-row .editor-exercise-name {
@@ -2984,4 +3046,359 @@ a.mini-profile {
 }
 .highlight-main .chart-area {
   height: 150px;
+}
+
+/* Dashboard */
+.next-exercise-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  margin: -6px 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.next-exercise-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 11px;
+}
+.next-exercise-list li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.next-exercise-list li small {
+  color: var(--muted);
+  font:
+    10px "DM Mono",
+    monospace;
+  white-space: nowrap;
+}
+.next-exercise-list li.more {
+  border: 0;
+  color: var(--muted-2);
+  font-size: 10px;
+}
+.week-card {
+  padding: 24px 25px;
+}
+.week-card .section-heading {
+  margin-bottom: 20px;
+}
+.week-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.week-stat {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.week-stat > span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.week-stat > strong {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 24px;
+  letter-spacing: -0.07em;
+}
+.week-stat > strong small {
+  color: var(--muted-2);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.week-stat > small {
+  color: var(--muted-2);
+  font-size: 9px;
+}
+.week-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.week-day {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 170px;
+  padding: 12px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted-2);
+  font: inherit;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.week-day:disabled {
+  cursor: default;
+}
+.week-day > span {
+  font:
+    9px "DM Mono",
+    monospace;
+  text-transform: uppercase;
+}
+.week-day > strong {
+  color: var(--muted);
+  font-size: 17px;
+  letter-spacing: -0.05em;
+}
+.week-day > small {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  margin-top: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #10150c;
+  font-size: 9px;
+  font-weight: 700;
+}
+.week-day-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to top, var(--lime), rgba(216, 243, 106, 0.55));
+  transition: height 0.4s ease;
+}
+.week-day > span,
+.week-day > strong {
+  position: relative;
+  z-index: 1;
+}
+.week-day.today {
+  border-color: rgba(216, 243, 106, 0.45);
+}
+.week-day.today > strong {
+  color: var(--lime);
+}
+.week-day.done {
+  border-color: rgba(216, 243, 106, 0.35);
+}
+.week-day.done:hover,
+.week-day.done:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(216, 243, 106, 0.14);
+  outline: 0;
+}
+.week-calendar-hint {
+  margin: 16px 0 0;
+}
+
+/* Session detail */
+.session-detail-modal {
+  width: min(560px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  max-height: min(760px, calc(100dvh - 40px));
+  overflow-y: auto;
+}
+.session-detail + .session-detail {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.session-detail h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.session-detail-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.session-detail-stats span {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(216, 243, 106, 0.05);
+  color: var(--muted);
+  font-size: 10px;
+}
+.session-detail-stats strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 17px;
+  letter-spacing: -0.05em;
+}
+.session-detail-exercise {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.session-detail-exercise > div {
+  min-width: 0;
+}
+.session-detail-exercise strong {
+  display: block;
+  font-size: 12px;
+}
+.session-detail-exercise .exercise-number {
+  width: 18px;
+  padding-top: 2px;
+}
+.set-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.set-chips span {
+  padding: 5px 8px;
+  border: 1px solid rgba(216, 243, 106, 0.2);
+  border-radius: 7px;
+  background: rgba(216, 243, 106, 0.05);
+  color: var(--text);
+  font:
+    10px "DM Mono",
+    monospace;
+}
+.set-chips small {
+  color: var(--muted-2);
+  font-size: 10px;
+}
+
+/* Routine editor drag and drop */
+.drag-handle {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-2);
+  cursor: grab;
+  touch-action: none;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.drag-handle:hover,
+.drag-handle:focus-visible {
+  color: var(--lime);
+  background: rgba(216, 243, 106, 0.07);
+  outline: 0;
+}
+.drag-handle .editor-exercise-number {
+  color: inherit;
+}
+.drag-handle i {
+  width: 10px;
+  height: 14px;
+  background: radial-gradient(circle, currentColor 1.2px, transparent 1.7px) 0 0 / 5px 5px;
+}
+.editor-exercise-row.cdk-drag-preview {
+  z-index: 1000;
+  border-color: rgba(216, 243, 106, 0.5);
+  background: #1d2a33;
+  box-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.5),
+    0 0 0 3px rgba(216, 243, 106, 0.08);
+  cursor: grabbing;
+}
+.editor-exercise-row.cdk-drag-preview .drag-handle {
+  color: var(--lime);
+}
+.editor-exercise-row.cdk-drag-placeholder {
+  border: 1px dashed rgba(216, 243, 106, 0.45);
+  background: rgba(216, 243, 106, 0.04);
+}
+.editor-exercise-row.cdk-drag-placeholder > * {
+  visibility: hidden;
+}
+.editor-exercise-list.cdk-drop-list-dragging .editor-exercise-row:not(.cdk-drag-placeholder),
+.editor-exercise-row.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (max-width: 760px) {
+  .week-calendar {
+    gap: 5px;
+  }
+  .week-day {
+    height: 120px;
+    padding: 10px 2px;
+    border-radius: 10px;
+  }
+  .week-day > strong {
+    font-size: 14px;
+  }
+  .week-day > small {
+    display: none;
+  }
+  .session-detail-modal {
+    padding: 20px 16px;
+  }
+
+  /* Floating rest timer, always reachable while logging sets. */
+  .workout-layout {
+    padding-bottom: 96px;
+  }
+  .workout-layout .timer-card {
+    position: fixed;
+    z-index: 12;
+    left: 12px;
+    right: 12px;
+    bottom: calc(69px + env(safe-area-inset-bottom) + 10px);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 12px 12px 16px;
+    text-align: left;
+    border-color: var(--line-strong);
+    background: rgba(21, 30, 37, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+  }
+  .workout-layout .timer-card.running {
+    border-color: rgba(216, 243, 106, 0.45);
+  }
+  .workout-layout .timer-card .eyebrow {
+    margin: 0;
+    font-size: 8px;
+  }
+  .workout-layout .timer-card strong {
+    margin: 2px 0 0;
+    font-size: 26px;
+  }
+  .workout-layout .timer-card p {
+    display: none;
+  }
+  .workout-layout .timer-actions button {
+    padding: 11px 4px;
+    font-size: 11px;
+  }
+}
+
+/* iOS zooms into inputs under 16px on focus. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
