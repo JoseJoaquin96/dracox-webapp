@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { AppError, errorMessage, toUserMessage } from './errors';
 import { ErrorLogService } from './error-log.service';
 
-/** Global loading/error state shown in the app banner. */
+/** Global loading/error state surfaced by the app shell. */
 @Injectable({ providedIn: 'root' })
 export class SyncStatus {
   private readonly errorLog = inject(ErrorLogService);

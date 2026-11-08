@@ -1,75 +1,81 @@
 @if (session(); as current) {
-  <div class="workout-header">
+  <header class="workout-header">
     <div>
-      <button class="back-link" type="button" (click)="saveAndExit()">&lt;- Guardar y salir</button>
-      <p class="eyebrow">Sesión en curso · {{ elapsed() }}</p>
-      <h1>{{ current.name }}</h1>
+      <button class="back-link" type="button" (click)="saveAndExit()">Guardar y salir</button>
+      <h1>{{ current.dayName ?? current.name }}</h1>
+      <p class="workout-subtitle">{{ current.name }} · Sesión iniciada {{ elapsed() }} · Los cambios se guardan automáticamente</p>
     </div>
-    <div class="workout-header-actions"><span class="live-pill"><i></i> En directo</span></div>
-  </div>
+    <span class="status-label is-active"><i aria-hidden="true"></i>En curso</span>
+  </header>
 
   <div class="workout-layout">
-    <section class="workout-main">
+    <section class="workout-main" aria-label="Registro de ejercicios">
       <div class="workout-progress-row">
-        <div>
-          <strong>{{ completedSets() }} <span>/ {{ totalSets() }} series</span></strong>
-          <small>Cada cambio se guarda automáticamente</small>
+        <div class="workout-progress-copy">
+          <strong aria-live="polite">{{ completedSets() }} <span>de {{ totalSets() }} series</span></strong>
+          <small>Progreso de la sesión</small>
         </div>
-        <span class="progress-track"><i [style.width.%]="progress()"></i></span>
+        <span class="progress-track" role="progressbar" [attr.aria-valuenow]="progress()" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="progress() + '% completado'"><i [style.width.%]="progress()"></i></span>
         <strong class="progress-percent">{{ progress() }}%</strong>
       </div>
+
+      <dracox-rest-timer />
 
       @for (sessionExercise of current.exercises; track sessionExercise.id; let index = $index) {
         @let exercise = exercises.byId(sessionExercise.exerciseId);
         @let fields = setFields[exercise?.kind ?? 'strength'];
-        <article class="exercise-log-card surface-card">
+        <article class="exercise-log-card">
           <div class="exercise-log-heading">
             <div class="exercise-title">
               <span class="exercise-number">{{ formatPosition(index) }}</span>
               <div>
                 <h2>{{ exercise?.name ?? 'Ejercicio' }}</h2>
-                <p>{{ exercise ? exercise.muscle + ' - ' + exercise.equipment : '' }}</p>
+                <p>{{ exercise ? exercise.muscle + ' · ' + exercise.equipment : '' }}</p>
               </div>
             </div>
-          </div>
-          <div class="previous-line">
-            Último entrenamiento <strong>{{ previousPerformance().get(sessionExercise.exerciseId) ?? 'Sin registro anterior' }}</strong>
-          </div>
-          <div class="sets-header">
-            <span>SET</span>
-            <span>{{ fields.weight?.toUpperCase() }} @if (fields.weight) { <small>kg</small> }</span>
-            <span>{{ fields.reps.toUpperCase() }}</span>
-            <span>OK</span>
+            <span class="exercise-set-count">{{ sessionExercise.sets.length }} series previstas</span>
           </div>
 
-          @for (set of sessionExercise.sets; track set.id; let setIndex = $index) {
-            <div class="set-row" [class.completed]="set.completed">
-              <span class="set-number">{{ setIndex + 1 }}</span>
-              @if (fields.weight) {
-                <label class="number-field">
-                  <input type="number" inputmode="decimal" min="0" step="0.5" placeholder="-"
-                         [attr.aria-label]="fields.weight + ' de la serie ' + (setIndex + 1)"
-                         [ngModel]="set.weight" (ngModelChange)="setWeight(set.id, $event)" />
-                  <small>kg</small>
-                </label>
-              } @else {
-                <span></span>
-              }
-              <label class="number-field reps-field">
-                <input type="number" inputmode="numeric" min="0" step="1" placeholder="-"
-                       [attr.aria-label]="fields.reps + ' de la serie ' + (setIndex + 1)"
-                       [ngModel]="set.reps" (ngModelChange)="setReps(set.id, $event)" />
-                <small>{{ set.target }}</small>
-              </label>
-              <button class="check-set" type="button" [class.checked]="set.completed" (click)="toggleSet(sessionExercise.exerciseId, set)"
-                      [attr.aria-label]="set.completed ? 'Desmarcar serie' : 'Completar serie'">
-                {{ set.completed ? 'OK' : '○' }}
-              </button>
+          <p class="previous-line">
+            Última vez <strong>{{ previousPerformance().get(sessionExercise.exerciseId) ?? 'Sin registro anterior' }}</strong>
+          </p>
+
+          <div class="sets-table" [class.with-weight]="!!fields.weight" role="table" [attr.aria-label]="'Series de ' + (exercise?.name ?? 'ejercicio')">
+            <div class="sets-header" role="row">
+              <span role="columnheader">Serie</span>
+              @if (fields.weight) { <span role="columnheader">{{ fields.weight }} <small>kg</small></span> }
+              <span role="columnheader">{{ fields.reps }}</span>
+              <span role="columnheader">Estado</span>
             </div>
-          }
+
+            @for (set of sessionExercise.sets; track set.id; let setIndex = $index) {
+              <div class="set-row" role="row" [class.completed]="set.completed">
+                <span class="set-number" role="cell">{{ formatPosition(setIndex) }}</span>
+                @if (fields.weight) {
+                  <label class="number-field" role="cell">
+                    <span class="visually-hidden">{{ fields.weight }} de la serie {{ setIndex + 1 }}</span>
+                    <input type="number" inputmode="decimal" min="0" step="0.5" placeholder="—"
+                           [attr.aria-label]="fields.weight + ' de la serie ' + (setIndex + 1)"
+                           [ngModel]="set.weight" (ngModelChange)="setWeight(set.id, $event)" />
+                    <small>kg</small>
+                  </label>
+                }
+                <label class="number-field reps-field" role="cell">
+                  <span class="visually-hidden">{{ fields.reps }} de la serie {{ setIndex + 1 }}</span>
+                  <input type="number" inputmode="numeric" min="0" step="1" placeholder="—"
+                         [attr.aria-label]="fields.reps + ' de la serie ' + (setIndex + 1)"
+                         [ngModel]="set.reps" (ngModelChange)="setReps(set.id, $event)" />
+                  <small>{{ set.target }}</small>
+                </label>
+                <button class="check-set" role="cell" type="button" [class.checked]="set.completed" [attr.aria-pressed]="set.completed" (click)="toggleSet(sessionExercise.exerciseId, set)">
+                  {{ set.completed ? 'Hecha' : 'Completar' }}
+                </button>
+              </div>
+            }
+          </div>
 
           <div class="exercise-card-footer">
-            <button class="add-set-button" type="button" (click)="workout.addSet(sessionExercise.id)">+ Añadir serie</button>
+            <button class="add-set-button" type="button" (click)="workout.addSet(sessionExercise.id)">Añadir serie</button>
             <span>Descanso recomendado {{ formatClock(restFor(sessionExercise.exerciseId)) }}</span>
           </div>
         </article>
@@ -77,50 +83,48 @@
     </section>
 
     <aside class="workout-aside">
-      <dracox-rest-timer />
-      <button class="button button-outline" type="button" (click)="saveAndExit()">Guardar y salir</button>
-      <button class="finish-button" type="button" (click)="finish()">Finalizar entrenamiento <span>OK</span></button>
+      <button class="finish-button" type="button" (click)="finish()">Finalizar entrenamiento</button>
     </aside>
   </div>
 } @else if (otherSessionActive()) {
-  <div class="empty-state surface-card">
-    <span>!</span>
-    <h2>Ya tienes una sesión activa</h2>
-    <p>Guárdala o termínala antes de empezar otro día.</p>
-    <button class="button button-primary" type="button" (click)="resumeActive()">Continuar sesión</button>
-    <button class="button button-outline" type="button" (click)="goToRoutines()">Volver a rutinas</button>
-  </div>
+  <section class="workout-empty-state">
+    <h1>Hay una sesión en curso</h1>
+    <p>Continúa esa sesión o guárdala antes de empezar otro día.</p>
+    <div class="empty-actions">
+      <button class="button button-primary" type="button" (click)="resumeActive()">Continuar sesión</button>
+      <button class="button button-outline" type="button" (click)="goToRoutines()">Volver a rutinas</button>
+    </div>
+  </section>
 } @else if (routine(); as planned) {
-  <div class="empty-state surface-card">
-    <button class="back-link" type="button" (click)="goToRoutines()">&lt;- Volver a rutinas</button>
-    <span>+</span>
-    <h2>{{ planned.name }}</h2>
-    <p>{{ routineDay()?.name ?? planned.daysLabel }}</p>
-    <small>La sesión aún no ha comenzado. Pulsa el botón cuando estés preparado.</small>
+  <section class="workout-preview">
+    <button class="back-link" type="button" (click)="goToRoutines()">Volver a rutinas</button>
+    <h1>{{ routineDay()?.name ?? planned.name }}</h1>
+    <p class="page-date">Día flexible · {{ planned.name }}</p>
+    <p class="heading-subtitle">{{ routineDay()?.exercises?.length ?? 0 }} ejercicios planificados</p>
+    <div class="preview-actions">
+      <button class="button button-primary" type="button" (click)="start()">Iniciar sesión</button>
+      <span>Podrás registrar el peso al entrenar.</span>
+    </div>
     <div class="preview-exercise-list">
       @for (plannedExercise of routineDay()?.exercises ?? []; track $index; let index = $index) {
         @let exercise = exercises.byId(plannedExercise.exerciseId);
         <div class="preview-exercise-row">
           <span class="exercise-number">{{ formatPosition(index) }}</span>
-          <div>
+          <div class="preview-exercise-copy">
             <strong>{{ exercise?.name ?? 'Ejercicio' }}</strong>
-            <small>{{ exercise ? exercise.muscle + ' - ' + exercise.equipment : '' }}</small>
+            <small>{{ exercise ? exercise.muscle + ' · ' + exercise.equipment : '' }}</small>
           </div>
-          <span class="preview-exercise-target">
-            {{ plannedExercise.sets }} series · {{ plannedExercise.repRange }} reps · {{ plannedExercise.restSeconds }} s
-          </span>
+          <span class="preview-exercise-target">{{ plannedExercise.sets }} series · {{ plannedExercise.repRange }} reps · {{ formatClock(plannedExercise.restSeconds) }} descanso</span>
         </div>
       } @empty {
-        <p>Este día no tiene ejercicios configurados.</p>
+        <p class="empty-inline">Este día todavía no tiene ejercicios. Puedes editarlos en la rutina.</p>
       }
     </div>
-    <button class="button button-primary" type="button" (click)="start()">Iniciar sesión</button>
-  </div>
+  </section>
 } @else {
-  <div class="empty-state surface-card">
-    <span>*</span>
-    <h2>No se encontró la rutina</h2>
-    <p>Vuelve a rutinas y selecciona un día válido.</p>
+  <section class="workout-empty-state">
+    <h1>No encontramos ese día</h1>
+    <p>Vuelve a rutinas y elige uno de tus días de entrenamiento.</p>
     <button class="button button-primary" type="button" (click)="goToRoutines()">Ver rutinas</button>
-  </div>
+  </section>
 }

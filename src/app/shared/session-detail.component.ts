@@ -12,7 +12,8 @@ const longDate = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numer
   selector: 'dracox-session-detail',
   imports: [ModalComponent],
   template: `
-    <dracox-modal panelClass="session-detail-modal" [eyebrow]="dateLabel()" [heading]="heading()" (closed)="closed.emit()">
+    <dracox-modal panelClass="session-detail-modal" [heading]="heading()" (closed)="closed.emit()">
+      <p class="session-detail-date">{{ dateLabel() }}</p>
       @for (session of sessions(); track session.id) {
         <section class="session-detail">
           @if (sessions().length > 1) { <h3>{{ session.name }}</h3> }

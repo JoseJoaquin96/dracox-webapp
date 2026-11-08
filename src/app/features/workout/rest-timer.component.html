@@ -1,15 +1,15 @@
-<article class="timer-card surface-card" [class.running]="running()">
+<section class="rest-timer" [class.running]="running()" aria-label="Temporizador de descanso">
   <div class="timer-readout">
-    <span class="eyebrow">Descanso</span>
+    <h2>Descanso</h2>
     <strong role="timer" aria-live="off">{{ label() }}</strong>
   </div>
-  <p>{{ running() ? 'Se reinicia al completar otra serie.' : 'Se inicia solo al completar una serie.' }}</p>
+  <p>{{ running() ? 'Se reinicia al completar otra serie.' : 'El temporizador empieza al completar una serie.' }}</p>
   <div class="timer-actions">
-    <button type="button" (click)="adjust(-15)" aria-label="Restar 15 segundos">- 15s</button>
+    <button type="button" (click)="adjust(-15)" aria-label="Restar 15 segundos">−15 s</button>
     <button type="button" class="timer-main" (click)="toggle()">
       {{ running() ? 'Pausar' : remaining() > 0 ? 'Continuar' : 'Iniciar' }}
     </button>
-    <button type="button" (click)="adjust(15)" aria-label="Sumar 15 segundos">+ 15s</button>
+    <button type="button" (click)="adjust(15)" aria-label="Sumar 15 segundos">+15 s</button>
   </div>
   <span class="timer-bar" aria-hidden="true"><i [style.width.%]="percent()"></i></span>
-</article>
+</section>

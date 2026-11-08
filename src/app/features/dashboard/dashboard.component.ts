@@ -3,15 +3,15 @@ import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
 import { WorkoutSession } from '../../domain/models';
 import { completedSetCount, localDayKey, muscleDistribution, nextRoutineDay, sessionTimestamp, sessionVolume, sessionsSince, startOfWeek, weekActivity } from '../../domain/stats';
-import { formatNumber, formatShortDate, plural } from '../../shared/format';
+import { formatNumber, formatPosition, formatShortDate, plural } from '../../shared/format';
 import { SessionDetailComponent } from '../../shared/session-detail.component';
 import { ExerciseStore } from '../../state/exercise.store';
 import { HistoryStore } from '../../state/history.store';
 import { RoutineStore } from '../../state/routine.store';
 import { WorkoutStore } from '../../state/workout.store';
 
-const MUSCLE_COLORS = ['var(--orange)', 'var(--violet)', 'var(--green)', '#72b6ff'];
-const PREVIEW_EXERCISES = 4;
+const MUSCLE_COLORS = ['#3f685d', '#9e4f39', '#596576', '#6b7651'];
+const PREVIEW_EXERCISES = 3;
 
 interface WeekTotals {
   sessions: number;
@@ -32,6 +32,7 @@ export class DashboardComponent {
   private readonly now = new Date();
 
   readonly formatNumber = formatNumber;
+  readonly formatPosition = formatPosition;
   readonly plural = plural;
   readonly muscleColors = MUSCLE_COLORS;
   readonly previewCount = PREVIEW_EXERCISES;

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T18:10:45Z",
+  "title": "Design System: Dracox",
+  "extensions": {
+    "colorMeta": {
+      "deep-pine": { "role": "primary", "displayName": "Deep Pine", "tonalRamp": ["#010e0d", "#072726", "#1b4240", "#365d5b", "#537a78", "#709896", "#8eb7b5", "#e8f0f0"] },
+      "pine-hover": { "role": "primary", "displayName": "Pine Shade", "tonalRamp": ["#020e0d", "#0a2726", "#1e4140", "#395d5b", "#557a78", "#729896", "#90b7b5", "#e9f0f0"] },
+      "measure-teal": { "role": "secondary", "displayName": "Measure Teal", "tonalRamp": ["#010f0b", "#062821", "#1a4339", "#365e54", "#527b70", "#6f998d", "#8db9ac", "#e8f1ee"] },
+      "teal-wash": { "role": "secondary", "displayName": "Teal Wash", "tonalRamp": ["#080c0a", "#1b241f", "#323e38", "#4c5952", "#68756e", "#85938c", "#a4b2aa", "#ecefee"] },
+      "rust-mark": { "role": "tertiary", "displayName": "Rust Marker", "tonalRamp": ["#1c0300", "#410d01", "#681e06", "#873b25", "#a85841", "#c9755e", "#eb947c", "#fdeae4"] },
+      "rust-wash": { "role": "tertiary", "displayName": "Rust Wash", "tonalRamp": ["#0f0a08", "#291f1a", "#443731", "#5f524b", "#7c6e67", "#9a8c84", "#baaaa3", "#f1eeec"] },
+      "mineral-ground": { "role": "neutral", "displayName": "Mineral Ground", "tonalRamp": ["#090c0a", "#1d2320", "#353d39", "#4f5853", "#6b7470", "#88928d", "#a7b1ac", "#edefee"] },
+      "clean-surface": { "role": "neutral", "displayName": "Clean Surface", "tonalRamp": ["#0a0b0a", "#202220", "#393b38", "#545653", "#70726f", "#8d908c", "#acafab", "#eeefee"] },
+      "raised-paper": { "role": "neutral", "displayName": "Raised Paper", "tonalRamp": ["#0b0b0b", "#222222", "#3a3a3a", "#555555", "#717171", "#8f8f8f", "#aeaeae", "#eeeeee"] },
+      "muted-surface": { "role": "neutral", "displayName": "Muted Surface", "tonalRamp": ["#0a0c0a", "#1f2320", "#373c38", "#515753", "#6d736f", "#8b918c", "#a9b0ab", "#edefee"] },
+      "forest-ink": { "role": "neutral", "displayName": "Forest Ink", "tonalRamp": ["#050d0c", "#132623", "#28403c", "#425b57", "#5e7873", "#7b9691", "#99b5af", "#eaf0ef"] },
+      "soft-ink": { "role": "neutral", "displayName": "Soft Ink", "tonalRamp": ["#050d0b", "#152521", "#2b4039", "#455b54", "#617770", "#7e958e", "#9cb4ac", "#ebf0ee"] },
+      "muted-ink": { "role": "neutral", "displayName": "Muted Ink", "tonalRamp": ["#060d0a", "#162520", "#2c3f38", "#465b53", "#62776f", "#7f958c", "#9db4ab", "#ebf0ee"] },
+      "rule-line": { "role": "neutral", "displayName": "Rule Line", "tonalRamp": ["#080c0a", "#1c2420", "#333d39", "#4d5853", "#69756f", "#86938d", "#a5b1ac", "#ecefee"] },
+      "strong-rule": { "role": "neutral", "displayName": "Strong Rule", "tonalRamp": ["#070d0a", "#192420", "#303e39", "#4a5953", "#66766f", "#83948d", "#a1b3ac", "#ecefee"] },
+      "error-red": { "role": "tertiary", "displayName": "Error Red", "tonalRamp": ["#1c0202", "#420a09", "#651f1c", "#843c36", "#a55851", "#c6766e", "#e7958c", "#fceae7"] },
+      "completed-green": { "role": "tertiary", "displayName": "Completed Green", "tonalRamp": ["#010f07", "#03291a", "#0d452f", "#2d6149", "#4a7e65", "#689d82", "#86bca0", "#e7f2ec"] },
+      "completed-tint": { "role": "neutral", "displayName": "Completed Tint", "tonalRamp": ["#090c0a", "#1d231f", "#353d37", "#4f5852", "#6b746e", "#89928b", "#a7b1aa", "#edefee"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Page Display", "purpose": "Responsive page headings." },
+      "headline": { "displayName": "Panel Headline", "purpose": "Main panel and section headings." },
+      "title": { "displayName": "Section Title", "purpose": "Smaller section headings." },
+      "body": { "displayName": "Body", "purpose": "Reading text and movement details." },
+      "label": { "displayName": "Action Label", "purpose": "Primary action labels." }
+    },
+    "shadows": [
+      { "name": "modal-separation", "value": "0 16px 38px rgba(12, 32, 28, 0.22)", "purpose": "Separates modal surfaces from the application." }
+    ],
+    "motion": [
+      { "name": "control-state", "value": "150ms ease-out", "purpose": "Button background, text, and border state changes." },
+      { "name": "reduced-motion", "value": "0.01ms transition and animation duration", "purpose": "Respects the reduced-motion preference." }
+    ],
+    "breakpoints": [
+      { "name": "compact-desktop", "value": "1050px" },
+      { "name": "mobile-navigation", "value": "850px" },
+      { "name": "phone", "value": "600px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action for starting, saving, or continuing training.",
+      "html": "<button class='ds-primary'>Start session</button>",
+      "css": ".ds-primary{min-height:44px;padding:10px 17px;border:1px solid transparent;border-radius:var(--radius-control);background:var(--deep);color:#fff;font:650 14px/1.2 system-ui,sans-serif;transition:background-color 150ms ease-out,color 150ms ease-out,border-color 150ms ease-out}.ds-primary:hover{background:var(--deep-hover)}.ds-primary:focus-visible{outline:3px solid var(--rust);outline-offset:3px}.ds-primary:active{background:var(--deep-hover)}.ds-primary:disabled{border-color:var(--line);background:#dfe6e1;color:#64756e;cursor:not-allowed}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Supporting action with a quiet teal surface.",
+      "html": "<button class='ds-secondary'>Upper body</button>",
+      "css": ".ds-secondary{min-height:44px;padding:10px 17px;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--teal-soft);color:var(--deep);font:650 14px/1.2 system-ui,sans-serif;transition:background-color 150ms ease-out,border-color 150ms ease-out}.ds-secondary:hover{border-color:var(--teal);background:#c8ddd2}.ds-secondary:focus-visible{outline:3px solid var(--rust);outline-offset:3px}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Lower-emphasis action used beside a primary choice.",
+      "html": "<button class='ds-outline'>Cancel</button>",
+      "css": ".ds-outline{min-height:44px;padding:10px 17px;border:1px solid var(--line-strong);border-radius:var(--radius-control);background:transparent;color:var(--ink);font:650 14px/1.2 system-ui,sans-serif;transition:background-color 150ms ease-out,border-color 150ms ease-out}.ds-outline:hover{border-color:var(--deep);background:var(--surface-muted)}.ds-outline:focus-visible{outline:3px solid var(--rust);outline-offset:3px}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Labeled search input for the exercise library.",
+      "html": "<label class='ds-search'><span>Search exercise</span><input type='search' placeholder='Name, group, or equipment'></label>",
+      "css": ".ds-search{display:grid;max-width:540px;gap:5px;color:var(--ink);font:620 13px/1.4 system-ui,sans-serif}.ds-search input{width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface-raised);color:var(--ink);font:14px system-ui,sans-serif}.ds-search input::placeholder{color:var(--ink-muted);opacity:1}.ds-search input:focus-visible{border-color:var(--deep);outline:3px solid rgba(36,75,73,.17);outline-offset:1px}"
+    },
+    {
+      "name": "Primary Navigation",
+      "kind": "nav",
+      "refersTo": "nav-primary",
+      "description": "Desktop route links with an active rust rule.",
+      "html": "<nav class='ds-nav' aria-label='Primary'><a href='#today'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='m3 10 9-7 9 7M5.5 9v11h13V9'/></svg>Today</a><a href='#routines'>Routines</a><a class='ds-active' href='#progress'>Progress</a></nav>",
+      "css": ".ds-nav{display:flex;align-items:stretch;gap:26px;background:var(--deep);padding:0 18px}.ds-nav a{position:relative;display:inline-flex;min-height:54px;align-items:center;gap:8px;color:#d7e4de;font:560 13px system-ui,sans-serif;text-decoration:none}.ds-nav a:hover,.ds-nav a.ds-active{color:#fff}.ds-nav a.ds-active:after{position:absolute;right:0;bottom:0;left:0;height:2px;background:#c47a5d;content:''}.ds-nav svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.65}.ds-nav a:focus-visible{outline:3px solid var(--rust);outline-offset:3px}"
+    },
+    {
+      "name": "Active Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-active",
+      "description": "Selected muscle filter in the exercise library.",
+      "html": "<button class='ds-chip ds-selected' aria-pressed='true'>Chest</button>",
+      "css": ".ds-chip{min-height:36px;padding:7px 12px;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink-soft);font:12px system-ui,sans-serif}.ds-chip:hover{border-color:var(--deep)}.ds-chip.ds-selected{border-color:var(--deep);background:var(--deep);color:#fff}.ds-chip:focus-visible{outline:3px solid var(--rust);outline-offset:3px}"
+    },
+    {
+      "name": "Routine Card",
+      "kind": "card",
+      "refersTo": "routine-card",
+      "description": "Routine summary with a color-coded top rule and measured stats.",
+      "html": "<article class='ds-routine'><div class='ds-routine-top'><span class='ds-mark'>S</span><a href='#edit'>Edit</a></div><div class='ds-routine-copy'><p>3 training days</p><h3>Strength A</h3><p>Upper body focus</p></div><div class='ds-stats'><span>Duration <b>50 min</b></span><span>Sets <b>18</b></span></div></article>",
+      "css": ".ds-routine{overflow:hidden;border:1px solid var(--line);border-top:3px solid var(--teal);border-radius:var(--radius-card);background:var(--surface-raised);color:var(--ink);font:13px/1.5 system-ui,sans-serif}.ds-routine-top{display:flex;min-height:58px;align-items:center;justify-content:space-between;padding:13px 20px 0}.ds-mark{display:grid;width:34px;height:34px;place-items:center;border-radius:5px;background:var(--surface-muted);color:var(--ink);font-size:14px;font-weight:700;text-transform:uppercase}.ds-routine a{color:var(--deep);font-size:13px;font-weight:650}.ds-routine-copy{padding:8px 20px 0}.ds-routine p{margin:0 0 7px;color:var(--ink-soft);font-size:12px}.ds-routine h3{margin:0 0 4px;color:var(--ink);font-size:22px;font-weight:680;letter-spacing:-.03em}.ds-stats{display:flex;justify-content:space-between;gap:10px;margin-top:18px;padding:13px 20px;border-top:1px solid var(--line);color:var(--ink-soft);font-size:11px}.ds-stats b{display:block;color:var(--ink);font-size:13px;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Numbered Movement Row",
+      "kind": "custom",
+      "refersTo": "movement-row",
+      "description": "Movement name and context with its target aligned to the right.",
+      "html": "<div class='ds-movement'><span class='ds-number'>01</span><span class='ds-copy'><strong>Barbell row</strong><small>Back · Barbell</small></span><span class='ds-target'>4 × 8–10</span></div>",
+      "css": ".ds-movement{display:grid;min-height:68px;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;border-top:1px solid var(--line);color:var(--ink-soft);font:13px system-ui,sans-serif}.ds-number{color:var(--rust);font-size:18px;font-weight:680;font-variant-numeric:tabular-nums}.ds-copy{display:grid;gap:3px;min-width:0}.ds-copy strong{overflow:hidden;color:var(--ink);font-size:14px;text-overflow:ellipsis;white-space:nowrap}.ds-copy small{color:var(--ink-soft);font-size:12px}.ds-target{color:var(--ink-soft);font-size:13px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}"
+    },
+    {
+      "name": "Completed Set Row",
+      "kind": "custom",
+      "refersTo": "completed-set",
+      "description": "Completed measurements remain beside the in-place correction action.",
+      "html": "<div class='ds-set-row'><span class='ds-set-number'>01</span><span class='ds-measure'>60 <small>kg</small></span><span class='ds-measure'>8 <small>reps</small></span><button class='ds-set-action'>Done</button></div>",
+      "css": ".ds-set-row{display:grid;min-height:53px;grid-template-columns:48px minmax(0,1fr) minmax(0,1fr) 96px;align-items:center;gap:9px;border-top:1px solid var(--line);background:#e4eee7;font:13px system-ui,sans-serif;transition:background-color 150ms ease-out}.ds-set-number{color:var(--ink-soft);font-variant-numeric:tabular-nums;font-weight:650}.ds-measure{color:var(--ink);font-variant-numeric:tabular-nums}.ds-measure small{color:var(--ink-soft);font-size:11px}.ds-set-action{min-height:38px;padding:6px 8px;border:1px solid var(--success);border-radius:4px;background:var(--success);color:#fff;font:650 12px system-ui,sans-serif}.ds-set-action:hover{border-color:var(--deep);background:var(--deep)}.ds-set-action:focus-visible{outline:3px solid var(--rust);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Atlas de movimiento",
+    "overview": "Dracox reads like a contemporary strength-training reference sheet: cool mineral paper, deep green ink, quiet teal measures, restrained rust markers, and rules that keep each entry legible. The voice is practical and calm, with a compact system typeface that stays clear during a workout.\n\nTraining information leads the composition. Numbered movement rows, tabular figures, and thin dividers make planned work and completed work easy to scan; a completed set changes in its own row so its status stays beside its measurements. The visual world avoids anatomical illustration and decorative grid patterns.",
+    "keyCharacteristics": [
+      "Cool mineral surfaces with deep green text and actions.",
+      "Numbered movement entries and aligned, tabular training figures.",
+      "Flat, rule-led structure with teal measures and restrained rust state cues.",
+      "Responsive navigation that keeps the training routes reachable on small screens."
+    ],
+    "rules": [
+      { "name": "The Measured Accent Rule", "body": "Teal carries quantities; rust marks a meaningful state. Keep both subordinate to the training data.", "section": "colors" },
+      { "name": "The Figures Stay Tabular Rule", "body": "Use tabular numerals for sets, reps, weights, dates, duration, and volume so changing values stay aligned.", "section": "typography" },
+      { "name": "The Flat-by-Default Rule", "body": "Use tonal contrast and rules for ordinary content; reserve the broad shadow for the modal layer.", "section": "elevation" },
+      { "name": "The Set-in-Place Rule", "body": "A completed set keeps its measurements and correction action in the same row; status must not displace the training data.", "section": "components" }
+    ],
+    "dos": [
+      "Do keep movement names, muscle context, and targets together in numbered rows.",
+      "Do align training quantities with tabular numerals and use rules to clarify their columns.",
+      "Do keep primary actions and route state in the deep-green family, reserving teal for measures and rust for state cues.",
+      "Do preserve the order of training content when the layout stacks on mobile."
+    ],
+    "donts": [
+      "Don't add anatomical illustrations or decorative grid patterns.",
+      "Don't turn the workout into a row of competing metric cards; keep the next session and its data easy to scan.",
+      "Don't use teal and rust as interchangeable accents or add unsupported performance claims."
+    ]
+  }
+}

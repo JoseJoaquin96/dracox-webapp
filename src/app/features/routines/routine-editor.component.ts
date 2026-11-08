@@ -27,6 +27,7 @@ export class RoutineEditorComponent {
   readonly dayIndex = signal(0);
   readonly day = computed(() => this.draft().days[this.dayIndex()]);
   readonly saving = signal(false);
+  readonly reorderAnnouncement = signal('');
   selectedExerciseId = '';
 
   patch(changes: Partial<RoutineDraft>): void {
@@ -69,12 +70,12 @@ export class RoutineEditorComponent {
   }
 
   dropExercise(event: CdkDragDrop<RoutineExercise[]>): void {
-    if (event.previousIndex === event.currentIndex) return;
-    this.updateExercises((exercises) => {
-      const copy = [...exercises];
-      moveItemInArray(copy, event.previousIndex, event.currentIndex);
-      return copy;
-    });
+    if (event.previousContainer !== event.container) return;
+    this.reorderExercise(event.previousIndex, event.currentIndex);
+  }
+
+  moveExercise(index: number, direction: -1 | 1): void {
+    this.reorderExercise(index, index + direction);
   }
 
   /** Parses a numeric input, keeping the previous value when the input is not valid. */
@@ -106,6 +107,18 @@ export class RoutineEditorComponent {
 
   private updateExercises(change: (exercises: RoutineExercise[]) => RoutineExercise[]): void {
     this.updateDay((day) => ({ ...day, exercises: change(day.exercises) }));
+  }
+
+  private reorderExercise(from: number, to: number): void {
+    const exercises = this.day().exercises;
+    if (from < 0 || from >= exercises.length || to < 0 || to >= exercises.length || from === to) return;
+
+    const copy = [...exercises];
+    moveItemInArray(copy, from, to);
+    this.updateExercises(() => copy);
+
+    const name = this.exercises.byId(copy[to].exerciseId)?.name ?? 'Ejercicio';
+    this.reorderAnnouncement.set(`${name} ahora ocupa la posición ${formatPosition(to)}.`);
   }
 }
 

@@ -12,15 +12,15 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
     '(keydown)': 'keepFocusInside($event)'
   },
   template: `
-    <div class="modal-backdrop" (pointerdown)="pressedBackdrop = $event.target === $event.currentTarget"
+    <div class="modal-backdrop" [class.routine-editor-backdrop]="panelClass() === 'routine-editor-modal'"
+         (pointerdown)="pressedBackdrop = $event.target === $event.currentTarget"
          (click)="pressedBackdrop && $event.target === $event.currentTarget && closed.emit()">
       <section class="modal-card" cdkScrollable [class]="panelClass()" role="dialog" aria-modal="true" [attr.aria-label]="heading()">
         <div class="modal-heading">
-          <div>
-            <span class="eyebrow">{{ eyebrow() }}</span>
-            <h2>{{ heading() }}</h2>
-          </div>
-          <button class="ghost-icon" type="button" (click)="closed.emit()" aria-label="Cerrar">x</button>
+          <h2>{{ heading() }}</h2>
+          <button class="ghost-icon" type="button" (click)="closed.emit()" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
         </div>
         <ng-content />
       </section>
@@ -28,7 +28,6 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
   `
 })
 export class ModalComponent {
-  readonly eyebrow = input('');
   readonly heading = input.required<string>();
   readonly panelClass = input('');
   readonly closed = output<void>();

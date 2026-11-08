@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { WorkoutSession } from '../../domain/models';
 import { estimatedOneRepMax, lastWeeksVolume, localDayKey, monthCalendar, sessionTimestamp, sessionVolume } from '../../domain/stats';
-import { formatNumber, formatShortDate } from '../../shared/format';
+import { formatNumber, formatPosition, formatShortDate } from '../../shared/format';
 import { SessionDetailComponent } from '../../shared/session-detail.component';
 import { ExerciseStore } from '../../state/exercise.store';
 import { HistoryStore } from '../../state/history.store';
@@ -20,6 +20,7 @@ export class ProgressComponent {
   readonly progress = inject(ProgressStore);
   private readonly now = new Date();
   readonly formatNumber = formatNumber;
+  readonly formatPosition = formatPosition;
   readonly formatShortDate = formatShortDate;
   readonly estimatedOneRepMax = estimatedOneRepMax;
   readonly weekdayInitials = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -30,6 +31,12 @@ export class ProgressComponent {
 
   readonly summary = this.progress.summary;
   readonly weeks = computed(() => lastWeeksVolume(this.summary().weeklyVolume, this.now));
+  readonly selectedWeekLabel = signal<string | null>(null);
+  readonly selectedWeek = computed(() => {
+    const weeks = this.weeks();
+    return weeks.find((week) => week.label === this.selectedWeekLabel()) ??
+      weeks.find((week) => week.isCurrent) ?? weeks[weeks.length - 1] ?? null;
+  });
   readonly maxWeekVolume = computed(() => Math.max(...this.weeks().map((week) => week.volume)));
   readonly calendar = computed(() => monthCalendar(this.summary().trainingDays, this.viewedMonth()));
   readonly evolution = computed(() => this.progress.exerciseProgress().map((point) => ({
@@ -42,6 +49,10 @@ export class ProgressComponent {
 
   moveMonth(offset: -1 | 1): void {
     this.monthOffset.update((value) => Math.min(0, value + offset));
+  }
+
+  selectWeek(label: string): void {
+    this.selectedWeekLabel.set(label);
   }
 
   async openDay(key: string): Promise<void> {
