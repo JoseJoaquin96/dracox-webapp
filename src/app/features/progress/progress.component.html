@@ -5,6 +5,13 @@
   </div>
 </header>
 
+<nav class="progress-tabs" aria-label="Secciones de progreso">
+  <button type="button" [attr.aria-current]="tab() === 'summary' ? 'page' : null" (click)="tab.set('summary')">Resumen</button>
+  <button type="button" [attr.aria-current]="tab() === 'exercises' ? 'page' : null" (click)="tab.set('exercises')">Ejercicios</button>
+  <button type="button" [attr.aria-current]="tab() === 'history' ? 'page' : null" (click)="tab.set('history')">Historial</button>
+</nav>
+
+@if (tab() === 'summary') {
 <section class="progress-overview">
   <div class="overview-chart">
     <div class="section-heading">
@@ -12,7 +19,7 @@
         <h2>Volumen por semana</h2>
         <p>Últimas ocho semanas · peso × repeticiones</p>
       </div>
-      <strong class="overview-total">{{ formatNumber(summary().volume) }} <small>kg en total</small></strong>
+      <strong class="overview-total">{{ formatNumber(periodVolume()) }} <small>kg en estas ocho semanas</small></strong>
     </div>
     <div class="chart-area" role="group" aria-label="Volumen de entrenamiento de las últimas ocho semanas. Selecciona una semana para consultar su volumen.">
       <div class="bars">
@@ -34,36 +41,12 @@
     </div>
   </div>
   <dl class="progress-totals">
-    <div><dt>Sesiones finalizadas</dt><dd>{{ summary().sessions }}</dd></div>
-    <div><dt>Series completadas</dt><dd>{{ summary().completedSets }}</dd></div>
+    <div><dt>Sesiones · total histórico</dt><dd>{{ summary().sessions }}</dd></div>
+    <div><dt>Series · total histórico</dt><dd>{{ summary().completedSets }}</dd></div>
   </dl>
 </section>
 
-<section class="progress-grid">
-  <article class="progress-section records-summary">
-    <div class="section-heading">
-      <div><h2>Mejores marcas</h2><p>Peso y repeticiones con mayor carga registrada por ejercicio.</p></div>
-      <a class="text-link" routerLink="/exercises">Ver ejercicios</a>
-    </div>
-    @for (record of summary().records; track record.exerciseId) {
-      <div class="lift-row">
-        <span class="movement-number" aria-hidden="true">{{ formatPosition($index) }}</span>
-        <div class="lift-info">
-          <strong>{{ exercises.byId(record.exerciseId)?.name ?? 'Ejercicio' }}</strong>
-          <small>{{ record.reps }} reps · 1RM estimado {{ estimatedOneRepMax(record.weight, record.reps) }} kg · {{ formatShortDate(record.date) }}</small>
-        </div>
-        <strong class="lift-weight">{{ formatNumber(record.weight) }} <small>kg</small></strong>
-        <span class="record-label">Mejor</span>
-      </div>
-    } @empty {
-      <div class="empty-inline">
-        <strong>Aún no hay marcas</strong>
-        <span>Registra unas sesiones con peso para ver tus mejores resultados.</span>
-      </div>
-    }
-    <a class="full-width-link" routerLink="/routines">Registrar un entrenamiento</a>
-  </article>
-
+<section class="progress-summary-calendar">
   <article class="progress-section calendar-section">
     <div class="section-heading">
       <div><h2>Sesiones del mes</h2><p>Pulsa un día entrenado para ver el detalle.</p></div>
@@ -95,42 +78,98 @@
   </article>
 </section>
 
+}
+@if (tab() === 'exercises') {
 <section class="progress-section evolution-section">
+  <div class="progress-filters">
+    <label class="field-label">Buscar ejercicio<input type="search" #query [value]="search()" (input)="filterExercises(query.value, exerciseRoutine())" placeholder="Nombre del ejercicio" /></label>
+    <label class="field-label">Rutina<select #routine [value]="exerciseRoutine()" (change)="filterExercises(search(), routine.value)">
+      <option value="">Todas las rutinas</option>
+      @for (item of routines.all(); track item.id) { <option [value]="item.id">{{ item.name }}{{ item.archivedAt ? ' (archivada)' : '' }}</option> }
+    </select></label>
+  </div>
   <div class="section-heading">
-    <div><h2>Fuerza por ejercicio</h2><p>Estimación de una repetición máxima según tus registros.</p></div>
+    <div><h2>Tus series y tu siguiente referencia</h2><p>Resultados reales{{ exerciseRoutine() ? ' en la rutina seleccionada' : ' en todas tus rutinas' }}.</p></div>
     <label class="field-label progress-select">Ejercicio
-      <select #exerciseSelect [value]="progress.selectedExerciseId() ?? ''" (change)="progress.selectExercise(exerciseSelect.value || null)">
+      <select #exerciseSelect [disabled]="loadingExercise()" [value]="progress.selectedExerciseId() ?? ''" (change)="selectExercise(exerciseSelect.value || null)">
         <option value="">Selecciona un ejercicio</option>
-        @for (record of summary().records; track record.exerciseId) {
+        @for (record of filteredRecords(); track record.exerciseId) {
           <option [value]="record.exerciseId">{{ exercises.byId(record.exerciseId)?.name ?? 'Ejercicio' }}</option>
         }
       </select>
     </label>
   </div>
-  @if (evolution().length) {
-    <div class="chart-area evolution-chart" role="img" aria-label="Evolución del 1RM estimado">
-      <div class="bars">
-        @for (point of evolution(); track $index; let last = $last) {
-          <div class="bar-column" [attr.aria-label]="point.oneRepMax + ' kg estimados el ' + formatShortDate(point.date)">
-            <i class="bar" [class.today]="last" [style.height.%]="percent(point.oneRepMax, maxOneRepMax())"
-               [attr.title]="point.weight + ' kg × ' + point.reps + ' → ' + point.oneRepMax + ' kg'"></i>
-            <span>{{ point.oneRepMax }}</span>
-          </div>
-        }
-      </div>
-    </div>
+  @if (!filteredRecords().length) { <p class="empty-inline">No hay ejercicios con marcas que coincidan con estos filtros.</p> }
+  @if (loadingExercise()) {
+    <p role="status">Consultando tus series anteriores…</p>
+  } @else if (exerciseError()) {
+    <p role="alert">No se pudo consultar todo el historial. Vuelve a intentarlo para ver una referencia fiable.</p>
+    <button class="button button-outline" type="button" (click)="selectExercise(progress.selectedExerciseId())">Reintentar</button>
   } @else if (progress.selectedExerciseId()) {
-    <p class="empty-inline">Todavía no hay sesiones con peso registrado para este ejercicio.</p>
+    <h3>{{ exercises.byId(progress.selectedExerciseId()!)?.name }}</h3>
+    @if (lastExerciseSession(); as latest) {
+      <section class="exercise-last-session">
+        <div class="section-heading"><h3>Última sesión</h3><span>{{ sessionDate(latest.session) }}</span></div>
+        <p>{{ latest.session.dayName ?? latest.session.name }}</p>
+        @for (set of latest.sets; track set.id; let index = $index) {
+          <div class="actual-set-row"><span>Serie {{ index + 1 }}</span><strong>{{ formatSetResult(set, selectedKind()) }}</strong><span>{{ set.completed ? 'Completada' : 'Sin completar' }}</span></div>
+        }
+      </section>
+      @if (reference(); as mark) {
+        <section class="exercise-reference">
+          <h3>Tu referencia a superar</h3>
+          <p>Con el mayor peso que usaste en la última sesión, tu mejor serie registrada es:</p>
+          <strong class="reference-result">{{ formatNumber(mark.weight) }} kg × {{ mark.reps }} reps</strong>
+          @if (mark.nextReps) {
+            <p><strong>Para superar esta marca: {{ formatNumber(mark.weight) }} kg × {{ mark.nextReps }} reps.</strong></p>
+            <p>Está dentro del objetivo de {{ mark.target }} reps registrado en esa sesión. Es una referencia para una serie, no una obligación para todas.</p>
+          } @else {
+            <p>Una repetición más con ese peso superaría esta marca. No proponemos un objetivo fuera del rango registrado ni un aumento automático de carga.</p>
+          }
+          <p>Valora el resultado de todas tus series antes de cambiar el peso.{{ mark.target ? ' Objetivo registrado: ' + mark.target + '.' : '' }}</p>
+        </section>
+      }
+      <section class="actual-evolution">
+        <h3>Evolución registrada</h3>
+        <p>Serie con mayor peso de cada sesión; a igual peso, la de más repeticiones. Hasta ocho sesiones recientes.</p>
+        @for (point of evolution(); track $index) {
+          @if (point.best; as best) {
+            <div class="actual-set-row"><span>{{ formatShortDate(point.date) }}</span><strong>{{ formatSetResult(best, selectedKind()) }}</strong></div>
+          }
+        }
+      </section>
+    } @else {
+      <p class="empty-inline">No hay series completadas de este ejercicio en la rutina seleccionada.</p>
+    }
   } @else {
-    <p class="empty-inline">Elige un ejercicio con marcas para consultar su evolución.</p>
-  }
-</section>
+    <p class="empty-inline">Elige un ejercicio para consultar tus series y una referencia a superar.</p>
+  }</section>
+}
 
+@if (tab() !== 'exercises') {
 <section class="progress-section history-section" id="records">
   <div class="section-heading">
-    <div><h2>Historial de entrenamientos</h2><p>{{ summary().sessions }} sesiones finalizadas</p></div>
+    <div><h2>{{ tab() === 'summary' ? 'Últimas sesiones' : 'Historial de entrenamientos' }}</h2><p>{{ tab() === 'summary' ? 'Tus tres entrenamientos más recientes.' : 'Hasta diez sesiones por página.' }}</p></div>
+    @if (tab() === 'summary') { <button class="button button-outline" type="button" (click)="tab.set('history')">Ver historial</button> }
   </div>
-  @for (session of history.sessions(); track session.id) {
+  @if (tab() === 'history') {
+    <div class="progress-filters">
+      <label class="field-label">Mes<input type="month" #month [value]="historyMonth()" [disabled]="loadingHistory()" (change)="filterHistory(month.value, historyRoutine())" /></label>
+      <label class="field-label">Rutina<select #historyFilter [value]="historyRoutine()" [disabled]="loadingHistory()" (change)="filterHistory(historyMonth(), historyFilter.value)">
+        <option value="">Todas las rutinas</option>
+        @for (item of routines.all(); track item.id) { <option [value]="item.id">{{ item.name }}{{ item.archivedAt ? ' (archivada)' : '' }}</option> }
+      </select></label>
+      <button class="button button-outline" type="button" [disabled]="loadingHistory()" (click)="filterHistory('', '')">Limpiar filtros</button>
+    </div>
+    @if (historyMonth()) {
+      @if (loadingHistory()) {
+        <p class="history-month-count" role="status">Contando entrenamientos del mes…</p>
+      } @else if (!historyError()) {
+        <p class="history-month-count" role="status">{{ historyMonthCount() }}</p>
+      }
+    }
+  }
+  @for (session of tab() === 'summary' ? recentSessions() : historyPage(); track session.id) {
     <button type="button" class="record-item session-history-row" (click)="detail.set([session])">
       <span class="recent-date">{{ sessionDate(session) }}</span>
       <span class="history-copy">
@@ -141,14 +180,20 @@
     </button>
   } @empty {
     <div class="empty-inline">
-      <strong>Tu historial aparecerá aquí</strong>
-      <span>Finaliza una sesión para empezar a consultar tus entrenamientos anteriores.</span>
+      <strong>{{ loadingHistory() ? 'Buscando sesiones…' : 'No hay sesiones para mostrar' }}</strong>
+      <span>Prueba otro mes o rutina si has aplicado filtros.</span>
     </div>
   }
-  @if (history.hasMore()) {
-    <button class="full-width-link" type="button" (click)="history.loadMore()">Cargar sesiones anteriores</button>
+  @if (tab() === 'history') {
+    @if (historyError()) { <p role="alert">No se pudieron cargar más sesiones. Vuelve a intentarlo.</p> }
+    <nav class="history-pagination" aria-label="Páginas del historial">
+      <button class="button button-outline" type="button" [disabled]="page() === 0 || loadingHistory()" (click)="page.update(previousPage)">Anterior</button>
+      <span role="status">{{ loadingHistory() ? 'Cargando…' : 'Página ' + (page() + 1) }}</span>
+      <button class="button button-outline" type="button" [disabled]="!hasNextPage() || loadingHistory()" (click)="nextPage()">Siguiente</button>
+    </nav>
   }
 </section>
+}
 
 @if (detail(); as sessions) {
   <dracox-session-detail [sessions]="sessions" (closed)="detail.set(null)" />

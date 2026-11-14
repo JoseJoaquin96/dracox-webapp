@@ -1231,6 +1231,81 @@ small {
   text-align: right;
 }
 
+.progress-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.progress-tabs button {
+  flex: 1;
+  max-width: 180px;
+  min-height: 48px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.progress-tabs button[aria-current], .progress-tabs button:hover {
+  color: var(--deep);
+  border-bottom-color: var(--deep);
+}
+
+.progress-filters, .exercise-progress-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px 24px;
+  margin: 0 0 24px;
+}
+
+.progress-filters .field-label {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.progress-filters input, .progress-filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.exercise-progress-stats dt { color: var(--ink-soft); font-size: 14px; }
+.exercise-progress-stats dd { margin: 6px 0; font-size: 20px; font-weight: 650; }
+.exercise-progress-stats small { color: var(--ink-soft); }
+.progress-summary-calendar { max-width: 640px; }
+.exercise-last-session, .exercise-reference, .actual-evolution {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.exercise-last-session p, .exercise-reference p, .actual-evolution p {
+  color: var(--ink-soft);
+  max-width: 65ch;
+  font-size: 14px;
+}
+.actual-set-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.actual-set-row > strong { margin-left: auto; }
+.actual-set-row > span:last-child:not(:first-child) { color: var(--ink-soft); font-size: 12px; }
+.reference-result { display: block; margin: 12px 0; color: var(--deep); font-size: 22px; font-variant-numeric: tabular-nums; }
+.history-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 20px; }
+.history-pagination > span { font-size: 13px; color: var(--ink-soft); }
+.history-month-count { margin: -8px 0 20px; color: var(--ink-soft); font-size: 14px; font-weight: 600; }
+
 .rest-timer {
   position: relative;
   display: grid;
@@ -1243,12 +1318,41 @@ small {
   background: var(--surface-muted);
 }
 
-.rest-timer.running {
+dracox-rest-timer {
+  display: block;
+}
+
+dracox-rest-timer.pinned {
   position: sticky;
   top: 8px;
   z-index: 8;
+}
+
+.rest-timer.pinned {
   border: 1px solid var(--line);
   background: var(--surface-raised);
+}
+
+.timer-completion:empty {
+  display: none;
+}
+
+.timer-completion {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-top: 8px;
+  color: var(--deep);
+  font-size: 14px;
+}
+
+.rest-timer.completed {
+  background: var(--surface-muted);
+}
+
+.rest-timer.completed > p {
+  display: none;
 }
 
 .timer-readout {
@@ -1457,7 +1561,7 @@ small {
   border-radius: 4px;
   background: var(--surface-raised);
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1895,15 +1999,15 @@ small {
 }
 
 .calendar-days > button.done {
-  border-color: var(--line);
-  background: var(--teal-soft);
-  color: var(--deep);
+  border-color: var(--teal);
+  background: var(--teal);
+  color: var(--surface-raised);
   font-weight: 700;
 }
 
 .calendar-days > button.done:hover {
   border-color: var(--deep);
-  background: #c8ddd2;
+  background: var(--deep);
 }
 
 .calendar-legend {
@@ -3165,7 +3269,7 @@ textarea {
     padding: 12px 12px 16px;
   }
 
-  .rest-timer.running {
+  .rest-timer.pinned {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 0 10px;
     margin-bottom: 14px;
@@ -3176,17 +3280,17 @@ textarea {
     justify-content: space-between;
   }
 
-  .rest-timer.running .timer-readout {
+  .rest-timer.pinned .timer-readout {
     justify-content: flex-start;
     gap: 8px;
   }
 
-  .rest-timer.running .timer-readout h2 {
+  .rest-timer.pinned .timer-readout h2 {
     font-size: 12px;
     white-space: nowrap;
   }
 
-  .rest-timer.running .timer-readout strong {
+  .rest-timer.pinned .timer-readout strong {
     font-size: 17px;
   }
 
@@ -3194,7 +3298,7 @@ textarea {
     order: 3;
   }
 
-  .rest-timer.running > p {
+  .rest-timer.pinned > p {
     display: none;
   }
 
@@ -3207,12 +3311,12 @@ textarea {
     min-height: 38px;
   }
 
-  .rest-timer.running .timer-actions {
+  .rest-timer.pinned .timer-actions {
     grid-column: 2;
     grid-row: 1;
   }
 
-  .rest-timer.running .timer-actions button {
+  .rest-timer.pinned .timer-actions button {
     min-height: 36px;
     padding-inline: 5px;
     font-size: 11px;
@@ -3261,7 +3365,7 @@ textarea {
   .number-field input {
     min-height: 44px;
     padding-inline: 7px 27px;
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .number-field small {

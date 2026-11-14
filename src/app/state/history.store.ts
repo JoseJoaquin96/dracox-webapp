@@ -40,12 +40,13 @@ export class HistoryStore {
   }
 
   /** Loads older pages until every session since `date` is available. */
-  async loadUntil(date: Date): Promise<void> {
+  async loadUntil(date: Date): Promise<boolean> {
     while (this.more()) {
       const oldest = this.state().at(-1);
-      if (oldest && new Date(oldest.startedAt) < date) return;
-      if (!(await this.loadMore())) return;
+      if (oldest && new Date(oldest.startedAt) < date) return true;
+      if (!(await this.loadMore())) return false;
     }
+    return true;
   }
 
   /** Shows a workout finished offline until the server confirms it. */

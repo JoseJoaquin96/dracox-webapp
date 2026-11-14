@@ -1,9 +1,10 @@
-<section class="rest-timer" [class.running]="running()" aria-label="Temporizador de descanso">
+<section class="rest-timer" [class.pinned]="running() || remaining() > 0 || completed()" [class.completed]="completed()" aria-label="Temporizador de descanso">
   <div class="timer-readout">
     <h2>Descanso</h2>
     <strong role="timer" aria-live="off">{{ label() }}</strong>
   </div>
   <p>{{ running() ? 'Se reinicia al completar otra serie.' : 'El temporizador empieza al completar una serie.' }}</p>
+  <div class="timer-completion" role="status" aria-live="polite" aria-atomic="true">@if (completed()) { <strong>Descanso terminado</strong><span>Puedes empezar la siguiente serie.</span> }</div>
   <div class="timer-actions">
     <button type="button" (click)="adjust(-15)" aria-label="Restar 15 segundos">−15 s</button>
     <button type="button" class="timer-main" (click)="toggle()">

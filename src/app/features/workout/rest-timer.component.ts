@@ -6,6 +6,7 @@ const DEFAULT_REST_SECONDS = 90;
 /** Rest countdown. Tracks an end timestamp so it stays accurate when the tab is throttled. */
 @Component({
   selector: 'dracox-rest-timer',
+  host: { '[class.pinned]': 'running() || remaining() > 0 || completed()' },
   templateUrl: './rest-timer.component.html'
 })
 export class RestTimerComponent {
@@ -15,6 +16,7 @@ export class RestTimerComponent {
   private readonly duration = signal(DEFAULT_REST_SECONDS);
 
   readonly running = computed(() => this.endsAt() !== null);
+  readonly completed = signal(false);
   readonly remaining = computed(() => {
     const endsAt = this.endsAt();
     return endsAt === null ? this.pausedSeconds() : Math.max(0, Math.ceil((endsAt - this.now()) / 1000));
@@ -45,12 +47,14 @@ export class RestTimerComponent {
   }
 
   adjust(seconds: number): void {
+    if (seconds > 0) this.completed.set(false);
     const endsAt = this.endsAt();
     if (endsAt === null) this.pausedSeconds.update((value) => Math.max(0, value + seconds));
     else this.endsAt.set(Math.max(Date.now(), endsAt + seconds * 1000));
   }
 
   private resume(seconds: number): void {
+    this.completed.set(false);
     this.now.set(Date.now());
     this.endsAt.set(Date.now() + seconds * 1000);
   }
@@ -60,6 +64,7 @@ export class RestTimerComponent {
     if (!this.running() || this.remaining() > 0) return;
     this.endsAt.set(null);
     this.pausedSeconds.set(0);
+    this.completed.set(true);
     navigator.vibrate?.([200, 100, 200]);
   }
 }
