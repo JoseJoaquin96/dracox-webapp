@@ -23,9 +23,13 @@
         Ejercicios
       </a>
       @if (auth.isAdmin()) {
+        <a routerLink="/admin/routines" routerLinkActive="active">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+          Personas
+        </a>
         <a routerLink="/admin/errors" routerLinkActive="active">
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3ZM12 8v5M12 16h.01" /></svg>
-          Admin
+          Errores
         </a>
       }
     </nav>
@@ -74,9 +78,13 @@
       <span>Ejercicios</span>
     </a>
     @if (auth.isAdmin()) {
+      <a routerLink="/admin/routines" routerLinkActive="active">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+        <span>Personas</span>
+      </a>
       <a routerLink="/admin/errors" routerLinkActive="active">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3ZM12 8v5M12 16h.01" /></svg>
-        <span>Admin</span>
+        <span>Errores</span>
       </a>
     }
   </nav>

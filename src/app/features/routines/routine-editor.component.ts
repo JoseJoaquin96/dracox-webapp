@@ -1,7 +1,10 @@
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Routine, RoutineDay, RoutineDraft, RoutineExercise } from '../../domain/models';
+import { AuthStore } from '../../core/auth/auth.store';
+import { SyncStatus } from '../../core/sync-status';
+import { RoutineApi } from '../../data/routine.api';
+import { Exercise, Routine, RoutineDay, RoutineDraft, RoutineExercise } from '../../domain/models';
 import { formatPosition } from '../../shared/format';
 import { ModalComponent } from '../../shared/modal.component';
 import { ExerciseStore } from '../../state/exercise.store';
@@ -17,10 +20,18 @@ const NEW_EXERCISE: Omit<RoutineExercise, 'exerciseId'> = { sets: 3, repRange: '
 export class RoutineEditorComponent {
   /** Routine to edit, or null to create a new one. */
   readonly routine = input<Routine | null>(null);
+  readonly targetUserId = input<string | null>(null);
+  readonly exerciseCatalog = input<Exercise[] | null>(null);
   readonly closed = output<void>();
-  readonly exercises = inject(ExerciseStore);
+  readonly saved = output<void>();
+  private readonly exercises = inject(ExerciseStore);
   private readonly routines = inject(RoutineStore);
+  private readonly api = inject(RoutineApi);
+  private readonly auth = inject(AuthStore);
+  private readonly status = inject(SyncStatus);
   readonly formatPosition = formatPosition;
+  readonly availableExercises = computed(() => this.exerciseCatalog() ?? this.exercises.all());
+  readonly exercisesById = computed(() => new Map(this.availableExercises().map((exercise) => [exercise.id, exercise])));
 
   readonly draft = linkedSignal<RoutineDraft>(() => toDraft(this.routine()));
   readonly step = linkedSignal<'details' | 'exercises'>(() => this.routine() ? 'exercises' : 'details');
@@ -84,6 +95,10 @@ export class RoutineEditorComponent {
     return Number.isFinite(parsed) && parsed >= min ? parsed : previous;
   }
 
+  close(): void {
+    if (!this.saving()) this.closed.emit();
+  }
+
   async save(): Promise<void> {
     const draft = this.draft();
     if (this.saving() || !draft.name.trim()) return;
@@ -95,9 +110,19 @@ export class RoutineEditorComponent {
     };
     this.saving.set(true);
     const routine = this.routine();
-    const saved = routine ? await this.routines.update(routine.id, cleanDraft) : await this.routines.create(cleanDraft);
+    const userId = this.targetUserId();
+    const saved = userId
+      ? await this.status.run(async () => {
+        if (routine) await this.api.update(routine.id, cleanDraft, userId);
+        else await this.api.create(cleanDraft, userId);
+        if (this.auth.userId() === userId) void this.routines.load();
+      }, 'admin-routines')
+      : await (routine ? this.routines.update(routine.id, cleanDraft) : this.routines.create(cleanDraft));
     this.saving.set(false);
-    if (saved) this.closed.emit();
+    if (saved) {
+      this.saved.emit();
+      this.closed.emit();
+    }
   }
 
   private updateDay(change: (day: RoutineDay) => RoutineDay): void {
@@ -117,7 +142,7 @@ export class RoutineEditorComponent {
     moveItemInArray(copy, from, to);
     this.updateExercises(() => copy);
 
-    const name = this.exercises.byId(copy[to].exerciseId)?.name ?? 'Ejercicio';
+    const name = this.exercisesById().get(copy[to].exerciseId)?.name ?? 'Ejercicio';
     this.reorderAnnouncement.set(`${name} ahora ocupa la posición ${formatPosition(to)}.`);
   }
 }

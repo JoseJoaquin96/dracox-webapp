@@ -24,6 +24,11 @@ export const routes: Routes = [
         path: 'admin/errors',
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin-errors/admin-errors.component').then((m) => m.AdminErrorsComponent)
+      },
+      {
+        path: 'admin/routines',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/admin-routines/admin-routines.component').then((m) => m.AdminRoutinesComponent)
       }
     ]
   },

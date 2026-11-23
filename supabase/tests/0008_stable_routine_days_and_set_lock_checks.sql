@@ -2,7 +2,10 @@
 
 do $$
 begin
-  if pg_get_functiondef('public.update_routine_program(uuid,text,text,integer,text,jsonb)'::regprocedure) not like '%->> ''id''%' then
+  if pg_get_functiondef(coalesce(
+    to_regprocedure('public.write_routine_program(uuid,uuid,boolean,text,text,integer,text,jsonb)'),
+    'public.update_routine_program(uuid,text,text,integer,text,jsonb)'::regprocedure
+  )) not like '%->> ''id''%' then
     raise exception 'update_routine_program does not preserve routine day ids; apply migration 0008';
   end if;
 

@@ -1,0 +1,85 @@
+<header class="page-heading compact-heading">
+  <div>
+    <h1>Rutinas de atletas</h1>
+    <p class="heading-subtitle">Como administrador puedes crear y editar la rutina de cada persona.</p>
+  </div>
+</header>
+
+<div class="admin-person-picker">
+  <label class="field-label">Persona
+    <select [ngModel]="selectedUserId()" (ngModelChange)="selectUser($event)" [disabled]="editorOpen() || archiving()">
+      @for (user of users(); track user.id) {
+        <option [ngValue]="user.id">{{ user.name }}</option>
+      }
+    </select>
+  </label>
+  @if (selectedUser()) {
+    <button class="button button-primary" type="button" (click)="openEditor()" [disabled]="!selection() || archiving()">Nueva rutina</button>
+  }
+</div>
+
+@if (loading()) {
+  <p role="status">Cargando rutinas…</p>
+} @else if (selection()) {
+  <div class="routine-toolbar">
+    <div class="tabs" role="group" aria-label="Filtrar rutinas">
+      <button class="tab" type="button" [class.active]="!showArchived()" [attr.aria-pressed]="!showArchived()" (click)="showArchived.set(false)">
+        Activas <span>{{ activeRoutines().length }}</span>
+      </button>
+      <button class="tab" type="button" [class.active]="showArchived()" [attr.aria-pressed]="showArchived()" (click)="showArchived.set(true)">
+        Archivadas <span>{{ archivedRoutines().length }}</span>
+      </button>
+    </div>
+  </div>
+
+  <section class="routine-grid" aria-label="Rutinas administradas">
+    @for (routine of visibleRoutines(); track routine.id) {
+      <article class="routine-card" [style.--accent]="routine.color">
+        <div class="routine-card-top">
+          <span class="routine-mark" aria-hidden="true">{{ routine.name.slice(0, 1) }}</span>
+          @if (!routine.archivedAt) {
+            <button class="text-button" type="button" (click)="openEditor(routine)" [disabled]="archiving()" [attr.aria-label]="'Editar ' + routine.name">Editar</button>
+          } @else {
+            <span class="status-label">Archivada</span>
+          }
+        </div>
+        <div class="routine-card-copy">
+          <p class="routine-days">{{ routine.daysLabel }}</p>
+          <h2>{{ routine.name }}</h2>
+          <p>{{ routine.focus || 'Sin enfoque añadido' }}</p>
+        </div>
+        <dl class="routine-stats">
+          <div><dt>Duración</dt><dd>{{ routine.duration }} min</dd></div>
+          <div><dt>Series</dt><dd>{{ plannedSets(routine) }}</dd></div>
+          <div><dt>Ejercicios</dt><dd>{{ routineExercises(routine).length }}</dd></div>
+        </dl>
+        <div class="routine-card-footer">
+          @if (routine.archivedAt) {
+            <button class="button button-outline" type="button" (click)="setArchived(routine, false)" [disabled]="archiving()">Restaurar rutina</button>
+          } @else {
+            <button class="archive-button" type="button" (click)="setArchived(routine, true)" [disabled]="archiving()">Archivar</button>
+          }
+        </div>
+      </article>
+    } @empty {
+      <div class="empty-state">
+        <h2>{{ showArchived() ? 'No hay rutinas archivadas' : 'Esta persona todavía no tiene rutinas' }}</h2>
+        @if (!showArchived()) {
+          <p>Crea una rutina desde cero para {{ selectedUser()?.name }}.</p>
+          <button class="button button-primary" type="button" (click)="openEditor()" [disabled]="archiving()">Crear rutina</button>
+        }
+      </div>
+    }
+  </section>
+} @else if (selectedUser()) {
+  <button class="button button-outline" type="button" (click)="loadSelection()">Reintentar la carga</button>
+}
+
+@if (editorOpen()) {
+  <dracox-routine-editor
+    [routine]="editing()"
+    [targetUserId]="selectedUserId()"
+    [exerciseCatalog]="selection()?.exercises ?? null"
+    (saved)="loadSelection()"
+    (closed)="editorOpen.set(false)" />
+}

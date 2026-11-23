@@ -938,6 +938,18 @@ small {
   white-space: nowrap;
 }
 
+.admin-person-picker {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 18px;
+  max-width: 520px;
+}
+
+.admin-person-picker .field-label {
+  flex: 1;
+}
+
 .routine-toolbar {
   display: flex;
   align-items: center;
@@ -2932,7 +2944,7 @@ textarea {
   }
 
   .mobile-nav.has-admin {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .mobile-nav a {

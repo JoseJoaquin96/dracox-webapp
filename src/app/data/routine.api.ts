@@ -31,20 +31,32 @@ const COLUMNS = `
 
 @Injectable({ providedIn: 'root' })
 export class RoutineApi {
-  async list(): Promise<Routine[]> {
-    const rows = unwrap(await supabase().from('routines').select(COLUMNS).order('created_at')) as RoutineRow[];
+  async list(userId: string): Promise<Routine[]> {
+    const rows = unwrap(await supabase().from('routines').select(COLUMNS).eq('user_id', userId).order('created_at')) as RoutineRow[];
     return rows.map(toRoutine);
   }
 
-  async create(draft: RoutineDraft): Promise<void> {
+  async create(draft: RoutineDraft, userId?: string): Promise<void> {
+    if (userId) {
+      unwrap(await supabase().rpc('admin_create_routine_program', { p_user_id: userId, ...toParams(draft) }));
+      return;
+    }
     unwrap(await supabase().rpc('create_routine_program', toParams(draft)));
   }
 
-  async update(id: string, draft: RoutineDraft): Promise<void> {
+  async update(id: string, draft: RoutineDraft, userId?: string): Promise<void> {
+    if (userId) {
+      unwrap(await supabase().rpc('admin_update_routine_program', { p_routine_id: id, p_user_id: userId, ...toParams(draft) }));
+      return;
+    }
     unwrap(await supabase().rpc('update_routine_program', { p_routine_id: id, ...toParams(draft) }));
   }
 
-  async setArchived(id: string, archived: boolean): Promise<void> {
+  async setArchived(id: string, archived: boolean, userId?: string): Promise<void> {
+    if (userId) {
+      unwrap(await supabase().rpc('admin_set_routine_archived', { p_routine_id: id, p_user_id: userId, p_archived: archived }));
+      return;
+    }
     unwrap(await supabase().rpc(archived ? 'archive_routine' : 'unarchive_routine', { p_routine_id: id }));
   }
 }

@@ -1,7 +1,7 @@
 <dracox-modal
   panelClass="routine-editor-modal"
   [heading]="step() === 'details' ? 'Datos de la rutina' : 'Ejercicios de la rutina'"
-  (closed)="closed.emit()">
+  (closed)="close()">
 
   <div class="builder-steps">
     <span [class.active]="step() === 'details'" [class.done]="step() === 'exercises'">1 <b>Datos</b></span>
@@ -32,7 +32,7 @@
       </div>
     </div>
     <div class="modal-actions">
-      <button class="button button-outline" type="button" (click)="closed.emit()">Cancelar</button>
+      <button class="button button-outline" type="button" (click)="close()">Cancelar</button>
       <button class="button button-primary" type="button" (click)="step.set('exercises')" [disabled]="!draft().name.trim()">Continuar</button>
     </div>
   } @else {
@@ -62,7 +62,7 @@
 
     <div class="editor-exercise-list" cdkDropList [cdkDropListData]="day().exercises" cdkDropListLockAxis="y" (cdkDropListDropped)="dropExercise($event)" role="list" aria-label="Ejercicios del día">
       @for (planned of day().exercises; track planned; let index = $index) {
-        @let exercise = exercises.byId(planned.exerciseId);
+        @let exercise = exercisesById().get(planned.exerciseId);
         <div class="editor-exercise-row" cdkDrag [cdkDragData]="planned" cdkDragBoundary=".editor-exercise-list" role="listitem">
           <button class="drag-handle" type="button" cdkDragHandle aria-label="Arrastrar para reordenar">
             <span class="editor-exercise-number">{{ formatPosition(index) }}</span>
@@ -104,7 +104,7 @@
     <div class="add-exercise-row">
       <select [(ngModel)]="selectedExerciseId" aria-label="Ejercicio">
         <option value="">Selecciona un ejercicio...</option>
-        @for (exercise of exercises.all(); track exercise.id) {
+        @for (exercise of availableExercises(); track exercise.id) {
           <option [value]="exercise.id">{{ exercise.name }} · {{ exercise.muscle }}</option>
         }
       </select>

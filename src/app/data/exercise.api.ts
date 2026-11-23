@@ -9,8 +9,9 @@ const COLUMNS = 'id, owner_id, name, muscle, secondary, equipment, kind, initial
 
 @Injectable({ providedIn: 'root' })
 export class ExerciseApi {
-  async list(): Promise<Exercise[]> {
-    const rows = unwrap(await supabase().from('exercises').select(COLUMNS).order('name')) as ExerciseRow[];
+  async list(userId: string): Promise<Exercise[]> {
+    const rows = unwrap(await supabase().from('exercises').select(COLUMNS)
+      .or(`owner_id.is.null,owner_id.eq.${userId}`).order('name')) as ExerciseRow[];
     return rows.map(({ owner_id, ...exercise }) => ({ ...exercise, ownerId: owner_id }));
   }
 

@@ -24,7 +24,7 @@ export class ExerciseStore {
   }
 
   load(): Promise<boolean> {
-    return this.status.run(async () => this.state.set(await this.api.list()));
+    return this.status.run(() => this.reload(this.auth.userId()));
   }
 
   create(draft: ExerciseDraft): Promise<boolean> {
@@ -32,25 +32,34 @@ export class ExerciseStore {
       const userId = this.auth.userId();
       if (!userId) throw new AppError('Inicia sesión para crear ejercicios.');
       await this.api.create(userId, draft);
-      this.state.set(await this.api.list());
+      await this.reload(userId);
     });
   }
 
   update(id: string, draft: ExerciseDraft): Promise<boolean> {
     return this.status.run(async () => {
+      const userId = this.auth.userId();
       await this.api.update(id, draft);
-      this.state.set(await this.api.list());
+      await this.reload(userId);
     });
   }
 
   remove(id: string): Promise<boolean> {
     return this.status.run(async () => {
+      const userId = this.auth.userId();
       await this.api.remove(id);
+      if (this.auth.userId() !== userId) return;
       this.state.update((exercises) => exercises.filter((exercise) => exercise.id !== id));
     });
   }
 
   isOwn(exercise: Exercise): boolean {
     return exercise.ownerId !== null && exercise.ownerId === this.auth.userId();
+  }
+
+  private async reload(userId: string | null): Promise<void> {
+    if (!userId || this.auth.userId() !== userId) return;
+    const exercises = await this.api.list(userId);
+    if (this.auth.userId() === userId) this.state.set(exercises);
   }
 }
