@@ -13,8 +13,8 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
   },
   template: `
     <div class="modal-backdrop" [class.routine-editor-backdrop]="panelClass() === 'routine-editor-modal'"
-         (pointerdown)="pressedBackdrop = $event.target === $event.currentTarget"
-         (click)="pressedBackdrop && $event.target === $event.currentTarget && closed.emit()">
+         (pointerdown)="onBackdropPress($event)"
+         (click)="onBackdropClick($event)">
       <section class="modal-card" cdkScrollable [class]="panelClass()" role="dialog" aria-modal="true" [attr.aria-label]="heading()">
         <div class="modal-heading">
           <h2>{{ heading() }}</h2>
@@ -33,12 +33,21 @@ export class ModalComponent {
   readonly closed = output<void>();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   // Avoids closing when a drag or text selection that started inside ends on the backdrop.
-  pressedBackdrop = false;
+  private pressedBackdrop = false;
 
   constructor() {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     afterNextRender(() => this.host.querySelector<HTMLElement>('input, select, textarea')?.focus());
     inject(DestroyRef).onDestroy(() => previouslyFocused?.focus());
+  }
+
+  onBackdropPress(event: PointerEvent): void {
+    this.pressedBackdrop = event.target === event.currentTarget;
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (this.pressedBackdrop && event.target === event.currentTarget) this.closed.emit();
+    this.pressedBackdrop = false;
   }
 
   /** Tab / Shift+Tab cycle through the modal instead of leaving it. */

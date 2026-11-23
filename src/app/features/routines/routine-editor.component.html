@@ -61,7 +61,7 @@
     </div>
 
     <div class="editor-exercise-list" cdkDropList [cdkDropListData]="day().exercises" cdkDropListLockAxis="y" (cdkDropListDropped)="dropExercise($event)" role="list" aria-label="Ejercicios del día">
-      @for (planned of day().exercises; track planned; let index = $index) {
+      @for (planned of day().exercises; track $index; let index = $index) {
         @let exercise = exercisesById().get(planned.exerciseId);
         <div class="editor-exercise-row" cdkDrag [cdkDragData]="planned" cdkDragBoundary=".editor-exercise-list" role="listitem">
           <button class="drag-handle" type="button" cdkDragHandle aria-label="Arrastrar para reordenar">
